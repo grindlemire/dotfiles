@@ -50,7 +50,7 @@ update_terminal_cwd() {
 }
 
 # prompt
-PROMPT='%m:%1~ %n$ '
+PROMPT='%(?.%F{green}[%n@%m] [%1~]%f.%F{red}[%n@%m] [%1~]%f)$ '
 # in-place delete
 bindkey '^[[3~'  delete-char
 # zsh history
