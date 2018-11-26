@@ -1,15 +1,18 @@
-# Your previous .profile  (if any) is saved as .profile.mpsaved
-
-###############################################################################
-# aliases, path, etc.
-###############################################################################
-
 # activate venv, otherwise create and activate
+# This also rewrites the PYTHONPATH to be inside the virtualenv
 venv() {
     if [ ! -d venv ]; then
-	virtualenv venv
+        virtualenv venv
     fi
+    export _OLD_VIRTUAL_PYTHONPATH=${PYTHONPATH}
+    export PYTHONPATH=`pwd`
     source venv/bin/activate
+}
+
+vend() {
+    deactivate
+    export PYTHONPATH=${_OLD_VIRTUAL_PYTHONPATH}
+    unset _OLD_VIRTUAL_PYTHONPATH
 }
 
 # aliases
@@ -25,8 +28,6 @@ ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
 alias godir='cd $HOME/go/src/github.com/grindlemire'
 
 
-
-
 # Installed Apps added to PATH
 export PATH=~/Apps/bin:$PATH
 
@@ -34,7 +35,6 @@ export PATH=~/Apps/bin:$PATH
 export EDITOR='vim'
 
 # go stuff
-export REMOTEGOPATH=~/devbox/go/
 export GOPATH=$HOME/go
 export PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
 
@@ -49,8 +49,26 @@ update_terminal_cwd() {
     printf '\e]7;%s\a' "$PWD_URL"
 }
 
+dssh() {
+    if [ -n "$1" ]
+    then
+            docker exec -it $@ /bin/bash
+    fi
+}
+dexec() {
+    if [ -n "$1" ]
+    then
+            docker exec -it $@
+    fi
+}
+
+git_branch() {
+        printf "[%s]" "$(git branch 2>/dev/null | grep \* | cut -d ' ' -f2)"
+}
+setopt PROMPT_SUBST
 # prompt
-PROMPT='%m:%1~ %n$ '
+PROMPT='%(?.%F{green}[%n@%m] [%1~] $(git_branch)%f.%F{red}[%n@%m] [%1~] $(git_branch)%f)$ '
+
 # in-place delete
 bindkey '^[[3~'  delete-char
 # zsh history
