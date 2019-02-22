@@ -1,9 +1,18 @@
 # activate venv, otherwise create and activate
 # This also rewrites the PYTHONPATH to be inside the virtualenv
 venv() {
+    # If we are already in a venv and end it and return early
+    if [ "$PYTHONPATH" == $(pwd) ]; then
+        vend
+        return
+    fi 
+
+    # If a venv is not configured then create it
     if [ ! -d venv ]; then
         virtualenv venv
     fi
+
+    # With an existing venv enter into it
     export _OLD_VIRTUAL_PYTHONPATH=${PYTHONPATH}
     export PYTHONPATH=`pwd`
     source venv/bin/activate
