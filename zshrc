@@ -67,7 +67,7 @@ git_branch() {
 }
 setopt PROMPT_SUBST
 # prompt
-PROMPT='%(?.%F{green}[%n@%m] [%1~] $(git_branch)%f.%F{red}[%n@%m] [%1~] $(git_branch)%f)$ '
+PROMPT='%(?^%F{green}[%n@%m] [%1~] $(git_branch)%f^%F{red}[%n@%m] [%1~] $(git_branch)%f)$ '
 
 # in-place delete
 bindkey '^[[3~'  delete-char
@@ -98,3 +98,4 @@ add-zsh-hook precmd update_terminal_cwd
 add-zsh-hook preexec update_terminal_cwd
 add-zsh-hook chpwd update_terminal_cwd
 
+. ./local-zshrc 2>/dev/null
