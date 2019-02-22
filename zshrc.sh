@@ -15,6 +15,9 @@ vend() {
     unset _OLD_VIRTUAL_PYTHONPATH
 }
 
+# Get the nice ^r, ^a, and ^e behavior
+set -o emacs
+
 # aliases
 alias la='ls -a'   # hidden
 alias ll='ls -lh'  # long
@@ -98,4 +101,5 @@ add-zsh-hook precmd update_terminal_cwd
 add-zsh-hook preexec update_terminal_cwd
 add-zsh-hook chpwd update_terminal_cwd
 
-. ./local-zshrc 2>/dev/null
+# add in the untracked environment specific configuration
+. ~/dotfiles/local-zshrc.sh 2>/dev/null
