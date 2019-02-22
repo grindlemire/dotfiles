@@ -1,7 +1,7 @@
 # activate venv, otherwise create and activate
 # This also rewrites the PYTHONPATH to be inside the virtualenv
 venv() {
-    # If we are already in a venv and end it and return early
+    # If we are already in a venv then end it and return early
     if [ "$PYTHONPATH" == $(pwd) ]; then
         vend
         return
