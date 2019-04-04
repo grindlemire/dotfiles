@@ -1,49 +1,3 @@
-# activate venv, otherwise create and activate
-# This also rewrites the PYTHONPATH to be inside the virtualenv
-venv() {
-    # If we are already in a venv then end it and return early
-    if [ "$PYTHONPATH" == $(pwd) ]; then
-        vend
-        return
-    fi 
-
-    # If a venv is not configured then create it
-    if [ ! -d venv ]; then
-        virtualenv venv
-    fi
-
-    # With an existing venv enter into it
-    export _OLD_VIRTUAL_PYTHONPATH=${PYTHONPATH}
-    export PYTHONPATH=`pwd`
-    source venv/bin/activate
-}
-
-# activate venv, otherwise create and activate a virtualenv for python3
-# This also rewrites the PYTHONPATH to be inside the virtualenv 
-venv3() {
-    # If we are already in a venv then end it and return early
-    if [ "$PYTHONPATH" == $(pwd) ]; then
-        vend
-        return
-    fi 
-
-    # If a venv is not configured then create it
-    if [ ! -d venv ]; then
-        python3 -m venv venv
-    fi
-
-    # With an existing venv enter into it
-    export _OLD_VIRTUAL_PYTHONPATH=${PYTHONPATH}
-    export PYTHONPATH=`pwd`
-    source venv/bin/activate
-}
-
-vend() {
-    deactivate
-    export PYTHONPATH=${_OLD_VIRTUAL_PYTHONPATH}
-    unset _OLD_VIRTUAL_PYTHONPATH
-}
-
 # Get the nice ^r, ^a, and ^e behavior
 set -o emacs
 
@@ -58,7 +12,6 @@ alias emacs='emacs -nw'
 ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
 
 alias godir='cd $HOME/go/src/github.com/grindlemire'
-
 
 # Installed Apps added to PATH
 export PATH=~/Apps/bin:$PATH
@@ -81,17 +34,8 @@ update_terminal_cwd() {
     printf '\e]7;%s\a' "$PWD_URL"
 }
 
-dssh() {
-    if [ -n "$1" ]
-    then
-            docker exec -it $@ /bin/bash
-    fi
-}
-dexec() {
-    if [ -n "$1" ]
-    then
-            docker exec -it $@
-    fi
+clone() {
+	git clone git@github.com:$1
 }
 
 git_branch() {
@@ -130,5 +74,10 @@ add-zsh-hook precmd update_terminal_cwd
 add-zsh-hook preexec update_terminal_cwd
 add-zsh-hook chpwd update_terminal_cwd
 
-# add in the untracked environment specific configuration
+
+# source in the virtualenv helpers
+. ~/dotfiles/virtualenv.sh 2>/dev/null
+# source in the docker-compose helpers
+. ~/dotfiles/docker.sh 2>/dev/null
+# source in the untracked environment specific configuration
 . ~/dotfiles/local-zshrc.sh 2>/dev/null
