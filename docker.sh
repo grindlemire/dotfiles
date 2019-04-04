@@ -15,6 +15,11 @@ dexec() {
 }
 
 # bring up docker-containers and run them in the background
+dls() {
+    docker container ls $@
+}
+
+# bring up docker-containers and run them in the background
 dup() {
     docker-compose up -d $@
 }
