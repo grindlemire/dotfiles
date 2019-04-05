@@ -11,7 +11,9 @@ alias emacs='emacs -nw'
 # ls colors for bsd/linux
 ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
 
-alias godir='cd $HOME/go/src/github.com/grindlemire'
+godir() {
+    cd $HOME/go/src/github.com/grindlemire/$@
+}
 
 # Installed Apps added to PATH
 export PATH=~/Apps/bin:$PATH
