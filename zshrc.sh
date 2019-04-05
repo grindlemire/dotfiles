@@ -40,6 +40,11 @@ clone() {
 	git clone git@github.com:$1
 }
 
+# this will prune git branches that have been merged and allows you to edit them before deleting them
+gprune() {
+    git branch --merged >/tmp/merged-branches && vi /tmp/merged-branches && xargs git branch -d </tmp/merged-branches
+}
+
 git_branch() {
         printf "[%s]" "$(git branch 2>/dev/null | grep \* | cut -d ' ' -f2)"
 }
