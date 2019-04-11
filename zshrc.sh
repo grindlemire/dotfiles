@@ -30,6 +30,10 @@ export PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
 # zsh stuff
 ###############################################################################
 
+sum() {
+    awk '{ sum += $1 } END { print sum }'
+}
+
 # set window title and share pwd accross sessions
 update_terminal_cwd() {
     local PWD_URL="file://$HOSTNAME${PWD// /%20}"
