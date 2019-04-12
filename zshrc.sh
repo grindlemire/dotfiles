@@ -34,6 +34,10 @@ sum() {
     awk '{ sum += $1 } END { print sum }'
 }
 
+myip() {
+    ifconfig en0 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
+}
+
 # set window title and share pwd accross sessions
 update_terminal_cwd() {
     local PWD_URL="file://$HOSTNAME${PWD// /%20}"
