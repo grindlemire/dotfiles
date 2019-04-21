@@ -1,49 +1,3 @@
-# activate venv, otherwise create and activate
-# This also rewrites the PYTHONPATH to be inside the virtualenv
-venv() {
-    # If we are already in a venv then end it and return early
-    if [ "$PYTHONPATH" == $(pwd) ]; then
-        vend
-        return
-    fi 
-
-    # If a venv is not configured then create it
-    if [ ! -d venv ]; then
-        virtualenv venv
-    fi
-
-    # With an existing venv enter into it
-    export _OLD_VIRTUAL_PYTHONPATH=${PYTHONPATH}
-    export PYTHONPATH=`pwd`
-    source venv/bin/activate
-}
-
-# activate venv, otherwise create and activate a virtualenv for python3
-# This also rewrites the PYTHONPATH to be inside the virtualenv 
-venv3() {
-    # If we are already in a venv then end it and return early
-    if [ "$PYTHONPATH" == $(pwd) ]; then
-        vend
-        return
-    fi 
-
-    # If a venv is not configured then create it
-    if [ ! -d venv ]; then
-        python3 -m venv venv
-    fi
-
-    # With an existing venv enter into it
-    export _OLD_VIRTUAL_PYTHONPATH=${PYTHONPATH}
-    export PYTHONPATH=`pwd`
-    source venv/bin/activate
-}
-
-vend() {
-    deactivate
-    export PYTHONPATH=${_OLD_VIRTUAL_PYTHONPATH}
-    unset _OLD_VIRTUAL_PYTHONPATH
-}
-
 # Get the nice ^r, ^a, and ^e behavior
 set -o emacs
 
@@ -57,8 +11,9 @@ alias emacs='emacs -nw'
 # ls colors for bsd/linux
 ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
 
-alias godir='cd $HOME/go/src/github.com/grindlemire'
-
+godir() {
+    cd $HOME/go/src/github.com/grindlemire/$@
+}
 
 # Installed Apps added to PATH
 export PATH=~/Apps/bin:$PATH
@@ -75,23 +30,27 @@ export PATH=/usr/local/go/bin:$GOPATH/bin:/usr/local/bin:$PATH
 # zsh stuff
 ###############################################################################
 
+sum() {
+    awk '{ sum += $1 } END { print sum }'
+}
+
+myip() {
+    ifconfig en0 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
+}
+
 # set window title and share pwd accross sessions
 update_terminal_cwd() {
     local PWD_URL="file://$HOSTNAME${PWD// /%20}"
     printf '\e]7;%s\a' "$PWD_URL"
 }
 
-dssh() {
-    if [ -n "$1" ]
-    then
-            docker exec -it $@ /bin/bash
-    fi
+clone() {
+	git clone git@github.com:$1
 }
-dexec() {
-    if [ -n "$1" ]
-    then
-            docker exec -it $@
-    fi
+
+# this will prune git branches that have been merged and allows you to edit them before deleting them
+gprune() {
+    git branch --merged >/tmp/merged-branches && vi /tmp/merged-branches && xargs git branch -d </tmp/merged-branches
 }
 
 git_branch() {
@@ -130,5 +89,10 @@ add-zsh-hook precmd update_terminal_cwd
 add-zsh-hook preexec update_terminal_cwd
 add-zsh-hook chpwd update_terminal_cwd
 
-# add in the untracked environment specific configuration
+
+# source in the virtualenv helpers
+. ~/dotfiles/virtualenv.sh 2>/dev/null
+# source in the docker-compose helpers
+. ~/dotfiles/docker.sh 2>/dev/null
+# source in the untracked environment specific configuration
 . ~/dotfiles/local-zshrc.sh 2>/dev/null
