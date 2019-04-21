@@ -68,7 +68,7 @@ export EDITOR='vim'
 
 # go stuff
 export GOPATH=$HOME/go
-export PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
+export PATH=/usr/local/go/bin:$GOPATH/bin:/usr/local/bin:$PATH
 
 
 ###############################################################################
