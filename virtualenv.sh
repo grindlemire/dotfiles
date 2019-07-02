@@ -39,7 +39,7 @@ venv3() {
 }
 
 vend() {
-    deactivate
     export PYTHONPATH=${_OLD_VIRTUAL_PYTHONPATH}
     unset _OLD_VIRTUAL_PYTHONPATH
+    deactivate
 }

@@ -1,0 +1,67 @@
+{
+    "workbench.colorTheme": "Monokai Phoenix",
+    "editor.minimap.enabled": true,
+    "window.zoomLevel": 0,
+    "go.docsTool": "godoc",
+    "editor.matchBrackets": false,
+    "subtleBrackets.styles": {
+       "color": "red",
+       "borderWidth": "1px",
+       "borderColor": "red",
+       "borderStyle": "solid solid solid solid"
+    },
+    "editor.insertSpaces": true,
+    "go.lintTool": "golint",
+    "breadcrumbs.enabled": true,
+    "terminal.integrated.cursorStyle": "line",
+    "terminal.integrated.scrollback": 1000,
+    "terminal.external.osxExec": "Terminal.app",
+    "terminal.integrated.cursorBlinking": true,
+    "editor.cursorBlinking": "phase",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "editor.formatOnType": false,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/*.pyc": true,
+        "**/__pycache__": true,
+        "**/.classpath": true,
+        "**/.project": true,
+        "**/.settings": true,
+        "**/.factorypath": true
+    },
+    "python.formatting.provider": "yapf",
+    "python.formatting.yapfPath": "/usr/local/bin/yapf",
+    "python.formatting.yapfArgs": [
+        "--style",
+        ".style.yapf"
+    ],
+    "go.autocompleteUnimportedPackages": true,
+    "go.formatTool": "goimports",
+    // "clojureVSCode.formatOnSave": true,
+    "python.jediEnabled": false,
+    "workbench.settings.editor": "ui",
+    "workbench.list.keyboardNavigation": "filter",
+    "editor.suggestSelection": "first",
+    "workbench.settings.useSplitJSON": true,
+    "extensions.ignoreRecommendations": false,
+    "java.format.enabled": true,
+     "vim.cursorStylePerMode.insert": "line-thin",
+     "vim.cursorStylePerMode.normal": "line-thin",
+     "vim.cursorStylePerMode.replace": "",
+     "vim.statusBarColorControl": true,
+     "workbench.colorCustomizations": {
+         "statusBar.background": "#5f0000",
+         "statusBar.noFolderBackground": "#5f0000",
+         "statusBar.debuggingBackground": "#5f0000"
+     },
+     "vim.handleKeys": {
+         "<C-d>": true,
+         "<C-r>": false
+     },
+     "vim.startInInsertMode": true
+}
