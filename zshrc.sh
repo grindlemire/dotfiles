@@ -54,7 +54,7 @@ gprune() {
 }
 
 git_branch() {
-        printf "[%s]" "$(git branch 2>/dev/null | grep \* | cut -d ' ' -f2)"
+        printf "[%s]" "$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')"
 }
 setopt PROMPT_SUBST
 # prompt
