@@ -25,6 +25,26 @@ dlog() {
 }
 
 # bring up docker-containers and run them in the background
+dstart() {
+    docker container start $@
+}
+
+# stop a set of docker containers
+dstop() {
+    docker container stop $@
+}
+
+# jump into the logs of the docker-containers
+dlog() {
+    docker container logs -f $@
+}
+
+# stop and kill the current docker containers
+drm() {
+    docker container stop $@ && docker rm -f $@
+}
+
+# bring up docker-containers and run them in the background
 dcup() {
     docker-compose up -d $@
 }
