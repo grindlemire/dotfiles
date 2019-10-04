@@ -91,7 +91,10 @@ add-zsh-hook chpwd update_terminal_cwd
 
 # set vi mode and make the cursor a block underline cursor if we are in cmd mode
 bindkey -v 
+# I like these bindings and use them all the time. Make sure they stay the same
 bindkey "^R" history-incremental-search-backward
+bindkey "^E" end-of-line
+bindkey "^A" beginning-of-line
 function zle-keymap-select zle-line-init zle-line-finish {
   case $KEYMAP in
     vicmd)      echo -ne "\e[4 q";; # block underline cursor for cmd
