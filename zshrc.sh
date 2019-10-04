@@ -64,8 +64,8 @@ PROMPT='%(?^%F{green}[%n@%m] [%1~] $(git_branch)%f^%F{red}[%n@%m] [%1~] $(git_br
 bindkey '^[[3~'  delete-char
 # zsh history
 HISTFILE=$HOME/.zhistory
-HISTSIZE=10000
-SAVEHIST=10000
+HISTSIZE=50000
+SAVEHIST=50000
 setopt APPEND_HISTORY
 # setopt SHARE_HISTORY
 history() { builtin history 1 }
@@ -89,6 +89,21 @@ add-zsh-hook precmd update_terminal_cwd
 add-zsh-hook preexec update_terminal_cwd
 add-zsh-hook chpwd update_terminal_cwd
 
+# set vi mode and make the cursor a block underline cursor if we are in cmd mode
+bindkey -v 
+bindkey "^R" history-incremental-search-backward
+function zle-keymap-select zle-line-init zle-line-finish {
+  case $KEYMAP in
+    vicmd)      echo -ne "\e[4 q";; # block underline cursor for cmd
+    viins|main) echo -ne "\e[5 q";; # line cursor
+  esac
+
+  zle reset-prompt
+  zle -R
+}
+zle -N zle-line-init
+zle -N zle-line-finish
+zle -N zle-keymap-select
 
 # source in the virtualenv helpers
 . ~/dotfiles/virtualenv.sh 2>/dev/null
