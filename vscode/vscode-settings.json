@@ -1,14 +1,14 @@
 {
     "workbench.colorTheme": "Monokai Phoenix",
     "editor.minimap.enabled": true,
+    "editor.minimap.showSlider": "always",
     "window.zoomLevel": 0,
     "go.docsTool": "godoc",
     "editor.matchBrackets": false,
-    "subtleBrackets.styles": {
-       "color": "red",
-       "borderWidth": "1px",
-       "borderColor": "red",
-       "borderStyle": "solid solid solid solid"
+    "subtleBrackets.style": {
+        "borderWidth": "1px",
+        "borderColor": "red",
+        "borderStyle": "solid solid solid solid"
     },
     "editor.insertSpaces": true,
     "go.lintTool": "golint",
@@ -39,29 +39,22 @@
     "python.formatting.yapfArgs": [
         "--style",
         ".style.yapf"
+        // "${workspaceFolder}/.style.yapf"
     ],
     "go.autocompleteUnimportedPackages": true,
     "go.formatTool": "goimports",
-    // "clojureVSCode.formatOnSave": true,
-    "python.jediEnabled": false,
     "workbench.settings.editor": "ui",
     "workbench.list.keyboardNavigation": "filter",
     "editor.suggestSelection": "first",
     "workbench.settings.useSplitJSON": true,
     "extensions.ignoreRecommendations": false,
     "java.format.enabled": true,
-     "vim.cursorStylePerMode.insert": "line-thin",
-     "vim.cursorStylePerMode.normal": "line-thin",
-     "vim.cursorStylePerMode.replace": "",
-     "vim.statusBarColorControl": true,
-     "workbench.colorCustomizations": {
-         "statusBar.background": "#5f0000",
-         "statusBar.noFolderBackground": "#5f0000",
-         "statusBar.debuggingBackground": "#5f0000"
-     },
-     "vim.handleKeys": {
-         "<C-d>": true,
-         "<C-r>": false
-     },
-     "vim.startInInsertMode": true
+    "workbench.tree.renderIndentGuides": "always",
+    "files.insertFinalNewline": true,
+    "python.linting.pylintEnabled": true,
+    "workbench.iconTheme": "vscode-icons",
+    "vsicons.dontShowNewVersionMessage": true,
+    "editor.acceptSuggestionOnEnter": "smart",
+    "editor.autoClosingOvertype": "always",
+    "go.useLanguageServer": true
 }
