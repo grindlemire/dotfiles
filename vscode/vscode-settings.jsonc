@@ -3,7 +3,7 @@
     "workbench.colorTheme": "Monokai Phoenix",
     "editor.minimap.enabled": true,
     "window.zoomLevel": 2,
-    "editor.matchBrackets": "never",
+    "editor.matchBrackets": false,
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
@@ -57,9 +57,16 @@
         "<C-d>": false,
         "<C-r>": false,
         "<C-c>": false,
-        "<C-x>": false
+        "<C-f>": false,
+        "<C-x>": false,
+        "<C-n>": false,
+        "<C-w>": false
     },
     "vim.cursorStylePerMode.insert": "line-thin",
+    "vim.cursorStylePerMode.normal": "underline-thin",
+    "vim.statusBarColorControl": true,
+    "vim.statusBarColors.insert": "#007ACC",
+    "vim.useSystemClipboard": true,
 
     // Python config
     "python.formatting.provider": "yapf",

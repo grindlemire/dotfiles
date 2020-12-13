@@ -1,4 +1,3 @@
-// Place your key bindings in this file to override the defaults
 [
     {
         "key": "ctrl+h",
@@ -26,4 +25,34 @@
         "command": "workbench.action.quickOpenNavigateNextInEditorPicker",
         "when": "inEditorsPicker && inQuickOpen"
     },
+    {
+        "key": "ctrl+i",
+        "command": "editor.action.quickFix",
+        "when": "editorHasCodeActionsProvider && editorTextFocus && !editorReadonly"
+    },
+    {
+        "key": "ctrl+shift+i",
+        "command": "editor.action.autoFix",
+        "when": "editorTextFocus && !editorReadonly && supportedCodeAction =~ /(\\s|^)quickfix\\b/"
+    },
+    {
+        "key": "ctrl+e",
+        "command": "cursorEnd"
+    },
+    {
+        "key": "ctrl+shift+e",
+        "command": "cursorLineEndSelect"
+    },
+    {
+        "key": "ctrl+a",
+        "command": "cursorHome"
+    },
+    {
+        "key": "ctrl+shift+a",
+        "command": "cursorHomeSelect"
+    },
+    {
+        "key": "ctrl+l",
+        "command": "editor.action.formatDocument"
+    }
 ]
