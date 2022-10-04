@@ -25,6 +25,13 @@ export EDITOR='vim'
 export GOPATH=$HOME/go
 export PATH=/usr/local/go/bin:$GOPATH/bin:/usr/local/bin:$PATH
 
+# git signing stuff
+git_sign_init() {
+    git config --global gpg.format ssh
+    git config --global user.signingKey "$(cat ~/.ssh/$1.pub)"
+    git config --global commit.gpgsign true
+    git config --global tag.gpgsign true
+}
 
 ###############################################################################
 # zsh stuff
