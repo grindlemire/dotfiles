@@ -1,0 +1,85 @@
+{
+    "workbench.colorTheme": "Monokai",
+    "editor.gotoLocation.multipleDefinitions": "goto",
+    "gopls": {
+        "importShortcut": "Definition"
+    },
+    "git.enableCommitSigning": true,
+    "go.toolsManagement.autoUpdate": true,
+    "go.formatTool": "gofumpt",
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "\\.go$",
+                "cmd": "golines ${file} -w -m 120 --base-formatter=\"gofumpt\""
+            },
+        ]
+    },
+    "window.zoomLevel": 1,
+    "[python]": {
+        "editor.formatOnType": true
+    },
+}
+
+
+// Old version
+// {
+//     "workbench.colorTheme": "Monokai Phoenix",
+//     "editor.minimap.enabled": true,
+//     "editor.minimap.showSlider": "always",
+//     "window.zoomLevel": 0,
+//     "go.docsTool": "godoc",
+//     "editor.matchBrackets": false,
+//     "subtleBrackets.style": {
+//         "borderWidth": "1px",
+//         "borderColor": "red",
+//         "borderStyle": "solid solid solid solid"
+//     },
+//     "editor.insertSpaces": true,
+//     "go.lintTool": "golint",
+//     "breadcrumbs.enabled": true,
+//     "terminal.integrated.cursorStyle": "line",
+//     "terminal.integrated.scrollback": 1000,
+//     "terminal.external.osxExec": "Terminal.app",
+//     "terminal.integrated.cursorBlinking": true,
+//     "editor.cursorBlinking": "phase",
+//     "editor.formatOnSave": true,
+//     "editor.formatOnPaste": false,
+//     "editor.formatOnType": false,
+//     "files.exclude": {
+//         "**/.git": true,
+//         "**/.svn": true,
+//         "**/.hg": true,
+//         "**/CVS": true,
+//         "**/.DS_Store": true,
+//         "**/*.pyc": true,
+//         "**/__pycache__": true,
+//         "**/.classpath": true,
+//         "**/.project": true,
+//         "**/.settings": true,
+//         "**/.factorypath": true
+//     },
+//     "python.formatting.provider": "yapf",
+//     "python.formatting.yapfPath": "/usr/local/bin/yapf",
+//     "python.formatting.yapfArgs": [
+//         "--style",
+//         ".style.yapf"
+//         // "${workspaceFolder}/.style.yapf"
+//     ],
+//     "go.autocompleteUnimportedPackages": true,
+//     "go.formatTool": "goimports",
+//     "workbench.settings.editor": "ui",
+//     "workbench.list.keyboardNavigation": "filter",
+//     "editor.suggestSelection": "first",
+//     "workbench.settings.useSplitJSON": true,
+//     "extensions.ignoreRecommendations": false,
+//     "java.format.enabled": true,
+//     "workbench.tree.renderIndentGuides": "always",
+//     "files.insertFinalNewline": true,
+//     "python.linting.pylintEnabled": true,
+//     "workbench.iconTheme": "vscode-icons",
+//     "vsicons.dontShowNewVersionMessage": true,
+//     "editor.acceptSuggestionOnEnter": "smart",
+//     "editor.autoClosingOvertype": "always",
+//     "go.useLanguageServer": true
+// }

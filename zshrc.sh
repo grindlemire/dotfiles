@@ -7,6 +7,8 @@ alias ll='ls -lh'  # long
 alias lt='ls -lth' # long time sorted
 alias lla='ls -lha' # long and hidden
 alias emacs='emacs -nw'
+alias cap='ret=$?'
+alias check='[ $ret == 0 ] && true || false'
 
 # ls colors for bsd/linux
 ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
@@ -31,6 +33,13 @@ git_sign_init() {
     git config --global user.signingKey "$(cat ~/.ssh/$1.pub)"
     git config --global commit.gpgsign true
     git config --global tag.gpgsign true
+}
+
+# turn a video into a gif
+to_gif() {
+    ffmpeg -i $1 \
+        -vf "fps=10,scale=1280:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+        -loop 0 output.gif
 }
 
 ###############################################################################
@@ -73,8 +82,8 @@ bindkey '^[[3~'  delete-char
 HISTFILE=$HOME/.zhistory
 HISTSIZE=50000
 SAVEHIST=50000
-setopt APPEND_HISTORY
-# setopt SHARE_HISTORY
+# setopt APPEND_HISTORY
+setopt SHARE_HISTORY
 history() { builtin history 1 }
 # up/down searching
 autoload -U up-line-or-beginning-search
