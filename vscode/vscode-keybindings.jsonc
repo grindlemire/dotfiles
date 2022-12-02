@@ -53,6 +53,24 @@
     },
     {
         "key": "ctrl+l",
-        "command": "editor.action.formatDocument"
+        "command": "editor.action.formatDocument",
+    },
+    {
+        "key": "ctrl+k ctrl+a",
+        "command": "editor.action.selectAll"
+    },
+    {
+        "key": "ctrl+a",
+        "command": "-editor.action.selectAll"
+    },
+    {
+        "key": "ctrl+.",
+        "command": "workbench.action.navigateForward",
+        "when": "canNavigateForward"
+    },
+    {
+        "key": "ctrl+,",
+        "command": "workbench.action.navigateBack",
+        "when": "canNavigateBack"
     }
 ]
