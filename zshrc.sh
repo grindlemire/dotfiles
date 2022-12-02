@@ -51,9 +51,15 @@ gtest() {
     # use richgo if it is availalbe
     [[ -x "$(which richgo)" ]] && BIN='richgo' || BIN='go'
 
+    # ensure ripgrep installed 
+    if ! [ -x "$(which rg)" ]; then 
+        echo -e "${Red} please install ripgrep: ${Color_Off}\n    brew install ripgrep"
+        return 1 
+    fi
+
     FILTER=""    
     IFS=$'\n'
-    PACKAGE_DIRS=($(rg --files | rg $1 | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g' ))
+    PACKAGE_DIRS=($(rg --files | rg $1 | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
     DIRS=("${PACKAGE_DIRS[@]}")
     FILE_DIRS=()
 
@@ -61,15 +67,15 @@ gtest() {
     if [[ ${#PACKAGE_DIRS[@]} = 0 ]]; then 
         FILE_DIRS=($(rg -l "$1" | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
         DIRS=("${PACKAGE_DIRS[@]}" "${FILE_DIRS[@]}")
-    fi   
-    
+    fi       
     # if we have files generated from finding the symbol in a test then filter the tests
     if [[ ${#FILE_DIRS[@]} -ge 1 ]]; then 
         FILTER="-run $1"
     fi   
     shift
-    CMD="$(printf '%s test %s %s %s' $BIN ${DIRS[*]} $FILTER $@)"
-    echo -e "${Green} Running Cmds:\n    ${CMD} ${Color_Off}\n"
+    DIR_STR=$(printf ' %s' ${DIRS[*]})
+    CMD="$(printf '%s test %s %s %s' $BIN ${DIR_STR} $FILTER $@)"
+    echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
     eval "$CMD"
 }
 
