@@ -93,5 +93,52 @@
     {
         "key": "cmd+m",
         "command": "references-view.findImplementations"
-    }
+    },
+    {
+        "key": "cmd+i",
+        "command": "workbench.action.openNextRecentlyUsedEditorInGroup"
+    },
+    {
+        "key": "cmd+i",
+        "command": "workbench.action.quickOpenNavigateNextInEditorPicker",
+        "when": "inEditorsPicker && inQuickOpen"
+    },
+    {
+        "key": "cmd+i",
+        "command": "editor.action.quickFix",
+        "when": "editorHasCodeActionsProvider && editorTextFocus && !editorReadonly"
+    },
+    {
+        "key": "cmd+shift+i",
+        "command": "editor.action.autoFix",
+        "when": "editorTextFocus && !editorReadonly && supportedCodeAction =~ /(\\s|^)quickfix\\b/"
+    },
+    {
+        "key": "cmd+e",
+        "command": "cursorEnd"
+    },
+    {
+        "key": "cmd+shift+e",
+        "command": "cursorLineEndSelect"
+    },
+    {
+        "key": "cmd+a",
+        "command": "cursorHome"
+    },
+    {
+        "key": "cmd+shift+a",
+        "command": "cursorHomeSelect"
+    },
+    {
+        "key": "cmd+l",
+        "command": "editor.action.formatDocument",
+    },
+    {
+        "key": "cmd+k cmd+a",
+        "command": "editor.action.selectAll"
+    },
+    {
+        "key": "cmd+a",
+        "command": "-editor.action.selectAll"
+    },
 ]
