@@ -17,8 +17,8 @@ godir() {
     cd $HOME/go/src/github.com/grindlemire/$@
 }
 
-# Installed Apps added to PATH
-export PATH=~/Apps/bin:$PATH
+# Installed Apps and scripts added to PATH
+export PATH=~/Apps/bin:~/dotfiles/scripts:$PATH
 
 # editor needs to be set for commits without -m
 export EDITOR='vim'
