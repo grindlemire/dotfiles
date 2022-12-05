@@ -42,43 +42,6 @@ to_gif() {
         -loop 0 output.gif
 }
 
-# run go tests. The arg can either be a file path or test name
-gtest() {
-    Red="\033[0;31m"
-    Green='\033[0;32m'
-    Color_Off='\033[0m'
-
-    # use richgo if it is availalbe
-    [[ -x "$(which richgo)" ]] && BIN='richgo' || BIN='go'
-
-    # ensure ripgrep installed 
-    if ! [ -x "$(which rg)" ]; then 
-        echo -e "${Red} please install ripgrep: ${Color_Off}\n    brew install ripgrep"
-        return 1 
-    fi
-
-    FILTER=""    
-    IFS=$'\n'
-    PACKAGE_DIRS=($(rg --files | rg $1 | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
-    DIRS=("${PACKAGE_DIRS[@]}")
-    FILE_DIRS=()
-
-    # if we didn't find any files with the name of the filter then we must be looking for a test name
-    if [[ ${#PACKAGE_DIRS[@]} = 0 ]]; then 
-        FILE_DIRS=($(rg -l "$1" | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
-        DIRS=("${PACKAGE_DIRS[@]}" "${FILE_DIRS[@]}")
-    fi       
-    # if we have files generated from finding the symbol in a test then filter the tests
-    if [[ ${#FILE_DIRS[@]} -ge 1 ]]; then 
-        FILTER="-run $1"
-    fi   
-    shift
-    DIR_STR=$(printf ' %s' ${DIRS[*]})
-    CMD="$(printf '%s test %s %s %s' $BIN ${DIR_STR} $FILTER $@)"
-    echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
-    eval "$CMD"
-}
-
 ###############################################################################
 # zsh stuff
 ###############################################################################
