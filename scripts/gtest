@@ -13,10 +13,16 @@ if ! [ -x "$(which rg)" ]; then
     return 1 
 fi
 
-SEARCH_STR="${1//[$\^]/}"
+if [ -z "$1" ]; then
+    echo "must specify a test target or path"
+    return 1
+fi
+
+PACKAGE_STR="${1//[$\^]/}"
+SEARCH_STR=$(echo $PACKAGE_STR | cut -d '/' -f-1)
 FILTER=""    
 IFS=$'\n'
-PACKAGE_DIRS=($(rg --files | rg $SEARCH_STR | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
+PACKAGE_DIRS=($(rg --files | rg $PACKAGE_STR | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
 DIRS=("${PACKAGE_DIRS[@]}")
 FILE_DIRS=()
 
