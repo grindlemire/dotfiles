@@ -13,6 +13,10 @@ alias check='[ $ret == 0 ] && true || false'
 # ls colors for bsd/linux
 ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
 
+Red="\033[0;31m"
+Green='\033[0;32m'
+Color_Off='\033[0m'
+
 godir() {
     cd $HOME/go/src/github.com/grindlemire/$@
 }
@@ -33,6 +37,33 @@ git_sign_init() {
     git config --global user.signingKey "$(cat ~/.ssh/$1.pub)"
     git config --global commit.gpgsign true
     git config --global tag.gpgsign true
+}
+
+has_param() {
+    local term="$1"
+    shift
+    for arg; do
+        if [[ $arg == "$term" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+gitprune() {
+    CMD='git branch -D $branch'
+    if has_param '--dry' "$@"; then
+        CMD='echo "${Green}$branch ${Color_Off}is merged into master and can be deleted"'
+    fi
+
+    # taken from https://stackoverflow.com/questions/43489303/how-can-i-delete-all-git-branches-which-have-been-squash-and-merge-via-github
+    git checkout -q master && git for-each-ref refs/heads/ "--format=%(refname:short)" | \
+    while read branch; 
+        do mergeBase=$(git merge-base master $branch) && 
+        [[ $(git cherry master $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _)) == "-"* ]] && 
+        eval "$CMD"; 
+    done
+    return 0
 }
 
 # turn a video into a gif
