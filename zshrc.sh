@@ -63,6 +63,9 @@ gitprune() {
         [[ $(git cherry master $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _)) == "-"* ]] && 
         eval "$CMD"; 
     done
+
+    # fetch all the remote branches and remove the deleted branches from autocomplete
+    git fetch --prune --all
     return 0
 }
 

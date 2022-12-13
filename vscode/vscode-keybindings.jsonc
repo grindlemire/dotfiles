@@ -141,4 +141,18 @@
         "key": "cmd+a",
         "command": "-editor.action.selectAll"
     },
+    {
+        "key": "shift+cmd+m",
+        "command": "references-view.findImplementations"
+    },
+    {
+        "key": "cmd+m",
+        "command": "references-view.findReferences",
+        "when": "editorHasReferenceProvider"
+    },
+    {
+        "key": "cmd+k cmd+c",
+        "command": "copyRelativeFilePath",
+        "when": "editorFocus"
+    },
 ]
