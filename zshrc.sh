@@ -71,9 +71,12 @@ gitprune() {
 
 # turn a video into a gif
 to_gif() {
-    ffmpeg -i $1 \
-        -vf "fps=10,scale=1280:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
-        -loop 0 output.gif
+    FNAME="$(echo $1 | xargs -I file basename file .mov)"
+    cmd="ffmpeg -i $1 \
+        -vf \"fps=12,scale=1280:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" \
+        -loop 0 ${FNAME}.gif"
+    echo -e "${Green} Running Cmd:\n    ${cmd}${Color_Off}\n"
+    eval "$cmd"
 }
 
 ###############################################################################
