@@ -164,4 +164,14 @@
         "command": "copyRelativeFilePath",
         "when": "editorFocus"
     },
+    {
+        "key": "cmd+k cmd+n",
+        "command": "editor.action.rename",
+        "when": "editorHasRenameProvider && editorTextFocus && !editorReadonly"
+    },
+    {
+        "key": "f2",
+        "command": "-editor.action.rename",
+        "when": "editorHasRenameProvider && editorTextFocus && !editorReadonly"
+    }
 ]
