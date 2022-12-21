@@ -72,5 +72,15 @@
         "key": "ctrl+,",
         "command": "workbench.action.navigateBack",
         "when": "canNavigateBack"
-    }
+    },
+    {
+        "key": "ctrl+k ctrl+n",
+        "command": "editor.action.rename",
+        "when": "editorHasRenameProvider && editorTextFocus && !editorReadonly"
+    },
+    {
+        "key": "f2",
+        "command": "-editor.action.rename",
+        "when": "editorHasRenameProvider && editorTextFocus && !editorReadonly"
+    },
 ]
