@@ -53,17 +53,17 @@ has_param() {
 gitprune() {
     CMD='git branch -D $branch'
     if has_param '--dry' "$@"; then
-        CMD='echo "${Green}$branch ${Color_Off}is merged into master and can be deleted"'
+        CMD='echo "${Green}$branch ${Color_Off}is merged into main and can be deleted"'
     else
         # fetch all the remote branches and remove the deleted branches from autocomplete
         git fetch --prune --all
     fi
 
     # taken from https://stackoverflow.com/questions/43489303/how-can-i-delete-all-git-branches-which-have-been-squash-and-merge-via-github
-    git checkout -q master && git for-each-ref refs/heads/ "--format=%(refname:short)" | \
+    git checkout -q main && git for-each-ref refs/heads/ "--format=%(refname:short)" | \
     while read branch; 
-        do mergeBase=$(git merge-base master $branch) && 
-        [[ $(git cherry master $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _)) == "-"* ]] && 
+        do mergeBase=$(git merge-base main $branch) && 
+        [[ $(git cherry main $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _)) == "-"* ]] && 
         eval "$CMD"; 
     done
     return 0
