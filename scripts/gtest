@@ -33,10 +33,12 @@ if [[ ${#PACKAGE_DIRS[@]} = 0 ]]; then
 fi       
 # if we have files generated from finding the symbol in a test then filter the tests
 if [[ ${#FILE_DIRS[@]} -ge 1 ]]; then 
-    FILTER="-run $1"
+    FILTER="-run $1 "
 fi   
 shift
-DIR_STR=$(printf ' %s' ${DIRS[*]})
-CMD="$(printf '%s test %s %s %s' $BIN ${DIR_STR} $FILTER $@)"
+
+OTHER_ARGS="$(printf '%s ' ${@[*]})"
+DIR_STR=$(printf '%s ' ${DIRS[*]})
+CMD="$(printf '%s test %s %s %s' $BIN ${DIR_STR} $FILTER $OTHER_ARGS)"
 echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
 eval "$CMD"
