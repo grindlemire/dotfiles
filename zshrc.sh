@@ -102,9 +102,7 @@ clone() {
 }
 
 # this will prune git branches that have been merged and allows you to edit them before deleting them
-gprune() {
-    git branch --merged main | grep -v main | grep -v '*' >/tmp/merged-branches && vi /tmp/merged-branches && xargs git branch -d </tmp/merged-branches; rm -f /tmp/merged-branches
-}
+alias gprune=gitprune
 
 git_branch() {
         printf "[%s]" "$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')"
