@@ -136,7 +136,7 @@
     },
     {
         "key": "cmd+l",
-        "command": "editor.action.formatDocument",
+        "command": "editor.action.formatDocument"
     },
     {
         "key": "cmd+r",
