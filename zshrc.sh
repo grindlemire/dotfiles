@@ -109,11 +109,35 @@ fixssh() {
 alias gprune=gitprune
 
 git_branch() {
-        printf "[%s]" "$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')"
+        printf "%s" "$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')"
 }
+
+# alias git pull and git push from the current branch
+gpull() {
+    BRANCH=$(git_branch)
+    if [ -n "$1" ]; then
+        BRANCH=$1
+    fi
+
+    CMD="git pull origin ${BRANCH}"
+    echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
+    eval "$CMD"
+}
+gpush() {
+    BRANCH=$(git_branch)
+    if [ -n "$1" ]; then
+        BRANCH=$1
+    fi
+
+    CMD="git push origin ${BRANCH}"
+    echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
+    eval "$CMD"
+}
+
+
 setopt PROMPT_SUBST
 # prompt
-PROMPT='%(?^%F{green}[%n@%m] [%1~] $(git_branch)%f^%F{red}[%n@%m] [%1~] $(git_branch)%f)$ '
+PROMPT='%(?^%F{green}[%n@%m] [%1~] [$(git_branch)]%f^%F{red}[%n@%m] [%1~] [$(git_branch)]%f)$ '
 
 # in-place delete
 bindkey '^[[3~'  delete-char
