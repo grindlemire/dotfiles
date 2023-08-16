@@ -9,6 +9,7 @@ alias lla='ls -lha' # long and hidden
 alias emacs='emacs -nw'
 alias cap='ret=$?'
 alias check='[ $ret == 0 ] && true || false'
+alias vd='cd'
 
 # ls colors for bsd/linux
 ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
