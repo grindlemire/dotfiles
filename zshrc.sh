@@ -50,7 +50,7 @@ clone() {
 
 # this will prune git branches that have been merged and allows you to edit them before deleting them
 gprune() {
-    git branch --merged master | grep -v master | grep -v '*' >/tmp/merged-branches && vi /tmp/merged-branches && xargs git branch -d </tmp/merged-branches; rm -f /tmp/merged-branches
+    git branch --merged main | grep -v main | grep -v '*' >/tmp/merged-branches && vi /tmp/merged-branches && xargs git branch -d </tmp/merged-branches; rm -f /tmp/merged-branches
 }
 
 git_branch() {
@@ -114,3 +114,7 @@ zle -N zle-keymap-select
 . ~/dotfiles/docker.sh 2>/dev/null
 # source in the untracked environment specific configuration
 . ~/dotfiles/local-zshrc.sh 2>/dev/null
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
