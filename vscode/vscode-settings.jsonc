@@ -50,7 +50,6 @@
     "explorer.confirmDelete": false,
     "explorer.confirmDragAndDrop": false,
     "git.enableSmartCommit": true,
-
     // vim config
     "vim.startInInsertMode": true,
     "vim.handleKeys": {
@@ -67,12 +66,13 @@
     "vim.statusBarColorControl": true,
     "vim.statusBarColors.insert": "#007ACC",
     "vim.useSystemClipboard": true,
-
     // Python config
     "python.formatting.provider": "yapf",
     "python.formatting.yapfPath": "/usr/local/bin/yapf",
-    "python.formatting.yapfArgs": ["--style", ".style.yapf"],
-
+    "python.formatting.yapfArgs": [
+        "--style",
+        ".style.yapf"
+    ],
     // Golang config
     "go.docsTool": "godoc",
     "go.useLanguageServer": true,
@@ -86,7 +86,6 @@
             "source.organizeImports": true
         }
     },
-
     // Typescript config
     "typescript.updateImportsOnFileMove.enabled": "always",
     "[typescript]": {
@@ -99,7 +98,6 @@
     "prettier.packageManager": "yarn",
     "prettier.printWidth": 120,
     "prettier.singleQuote": true,
-
     // Rust config
     "[rust]": {
         "editor.defaultFormatter": "matklad.rust-analyzer"
