@@ -1,105 +1,83 @@
 {
-    // General config
-    "workbench.colorTheme": "Monokai Phoenix",
-    "editor.minimap.enabled": true,
-    "window.zoomLevel": 2,
-    "editor.matchBrackets": false,
-    "files.watcherExclude": {
-        "**/.git/objects/**": true,
-        "**/.git/subtree-cache/**": true,
-        "**/node_modules/*/**": true,
-        "**/.hg/store/**": true,
-        "**/target/**": true
+    "workbench.colorTheme": "Monokai",
+    "editor.gotoLocation.multipleDefinitions": "goto",
+    "gopls": {
+        "importShortcut": "Definition"
     },
-    "subtleBrackets.style": {
-        "color": "red",
-        "borderWidth": "1px",
-        "borderColor": "red",
-        "borderStyle": "solid solid solid solid"
+    "git.enableCommitSigning": true,
+    "go.toolsManagement.autoUpdate": true,
+    "go.formatTool": "gofumpt",
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "\\.go$",
+                "cmd": "golines ${file} -w -m 120 --base-formatter=\"gofumpt\""
+            },
+        ]
     },
-    "editor.insertSpaces": true,
-    "breadcrumbs.enabled": true,
-    "terminal.integrated.cursorStyle": "line",
-    "terminal.integrated.scrollback": 1000,
-    "terminal.external.osxExec": "Terminal.app",
-    "terminal.integrated.cursorBlinking": true,
-    "editor.cursorBlinking": "phase",
-    "editor.formatOnSave": true,
-    "editor.formatOnPaste": false,
-    "editor.formatOnType": false,
-    "files.exclude": {
-        "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
-        "**/CVS": true,
-        "**/.DS_Store": true,
-        "**/*.pyc": true,
-        "**/__pycache__": true,
-        "**/.classpath": true,
-        "**/.project": true,
-        "**/.settings": true,
-        "**/.factorypath": true
+    "window.zoomLevel": 1,
+    "[python]": {
+        "editor.formatOnType": true
     },
-    "workbench.settings.editor": "ui",
-    "workbench.list.keyboardNavigation": "filter",
-    "editor.suggestSelection": "first",
-    "workbench.settings.useSplitJSON": true,
-    "extensions.ignoreRecommendations": false,
-    "editor.autoClosingOvertype": "always",
-    "terminal.integrated.shell.windows": "C:\\Program Files\\Git\\bin\\bash.exe",
-    "explorer.confirmDelete": false,
-    "explorer.confirmDragAndDrop": false,
-    "git.enableSmartCommit": true,
-    // vim config
-    "vim.startInInsertMode": true,
-    "vim.handleKeys": {
-        "<C-d>": false,
-        "<C-r>": false,
-        "<C-c>": false,
-        "<C-f>": false,
-        "<C-x>": false,
-        "<C-n>": false,
-        "<C-w>": false
-    },
-    "vim.cursorStylePerMode.insert": "line-thin",
-    "vim.cursorStylePerMode.normal": "underline-thin",
-    "vim.statusBarColorControl": true,
-    "vim.statusBarColors.insert": "#007ACC",
-    "vim.useSystemClipboard": true,
-    // Python config
-    "python.formatting.provider": "yapf",
-    "python.formatting.yapfPath": "/usr/local/bin/yapf",
-    "python.formatting.yapfArgs": [
-        "--style",
-        ".style.yapf"
-    ],
-    // Golang config
-    "go.docsTool": "godoc",
-    "go.useLanguageServer": true,
-    "go.formatTool": "goimports",
-    "go.autocompleteUnimportedPackages": true,
-    "go.lintTool": "golint",
-    "[go]": {
-        "editor.insertSpaces": false,
-        "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": true
-        }
-    },
-    // Typescript config
-    "typescript.updateImportsOnFileMove.enabled": "always",
-    "[typescript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[jsonc]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "prettier.tabWidth": 4,
-    "prettier.packageManager": "yarn",
-    "prettier.printWidth": 120,
-    "prettier.singleQuote": true,
-    // Rust config
-    "[rust]": {
-        "editor.defaultFormatter": "matklad.rust-analyzer"
-    }
 }
+// Old version
+// {
+//     "workbench.colorTheme": "Monokai Phoenix",
+//     "editor.minimap.enabled": true,
+//     "editor.minimap.showSlider": "always",
+//     "window.zoomLevel": 0,
+//     "go.docsTool": "godoc",
+//     "editor.matchBrackets": false,
+//     "subtleBrackets.style": {
+//         "borderWidth": "1px",
+//         "borderColor": "red",
+//         "borderStyle": "solid solid solid solid"
+//     },
+//     "editor.insertSpaces": true,
+//     "go.lintTool": "golint",
+//     "breadcrumbs.enabled": true,
+//     "terminal.integrated.cursorStyle": "line",
+//     "terminal.integrated.scrollback": 1000,
+//     "terminal.external.osxExec": "Terminal.app",
+//     "terminal.integrated.cursorBlinking": true,
+//     "editor.cursorBlinking": "phase",
+//     "editor.formatOnSave": true,
+//     "editor.formatOnPaste": false,
+//     "editor.formatOnType": false,
+//     "files.exclude": {
+//         "**/.git": true,
+//         "**/.svn": true,
+//         "**/.hg": true,
+//         "**/CVS": true,
+//         "**/.DS_Store": true,
+//         "**/*.pyc": true,
+//         "**/__pycache__": true,
+//         "**/.classpath": true,
+//         "**/.project": true,
+//         "**/.settings": true,
+//         "**/.factorypath": true
+//     },
+//     "python.formatting.provider": "yapf",
+//     "python.formatting.yapfPath": "/usr/local/bin/yapf",
+//     "python.formatting.yapfArgs": [
+//         "--style",
+//         ".style.yapf"
+//         // "${workspaceFolder}/.style.yapf"
+//     ],
+//     "go.autocompleteUnimportedPackages": true,
+//     "go.formatTool": "goimports",
+//     "workbench.settings.editor": "ui",
+//     "workbench.list.keyboardNavigation": "filter",
+//     "editor.suggestSelection": "first",
+//     "workbench.settings.useSplitJSON": true,
+//     "extensions.ignoreRecommendations": false,
+//     "java.format.enabled": true,
+//     "workbench.tree.renderIndentGuides": "always",
+//     "files.insertFinalNewline": true,
+//     "python.linting.pylintEnabled": true,
+//     "workbench.iconTheme": "vscode-icons",
+//     "vsicons.dontShowNewVersionMessage": true,
+//     "editor.acceptSuggestionOnEnter": "smart",
+//     "editor.autoClosingOvertype": "always",
+//     "go.useLanguageServer": true
+// }
