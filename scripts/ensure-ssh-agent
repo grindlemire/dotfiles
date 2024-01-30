@@ -1,7 +1,7 @@
 # This script will ensure that the ssh signing key is loaded into a running agent
 
 # Check if ssh-agent is running
-if [ -n "$SSH_AUTH_SOCK" ] && [ -n "$SSH_AGENT_PID" ] && $(ps aux | grep -q $SSH_AGENT_PID) ; then
+if [ -n "$SSH_AUTH_SOCK" ] && [ -n "$SSH_AGENT_PID" ] && $(ps aux | grep -v grep | grep -q $SSH_AGENT_PID) ; then
     echo "ssh-agent is already running"
     ssh-add -l | grep -q "$(ssh-keygen -lf ~/.ssh/signing_key_rsa.pub | awk '{print $2}')"
     if [ $? -eq 0 ]; then
