@@ -1,8 +1,33 @@
 # This script will ensure that the ssh signing key is loaded into a running agent
 
+
+start_ssh_agent() {
+    echo "stopping ssh-agent"
+    killall ssh-agent > /dev/null 2>&1 || true
+    unset SSH_AUTH_SOCK
+    unset SSH_AGENT_PID
+
+    # Start ssh-agent if it's not already running
+    eval `ssh-agent -s`
+    echo "ssh-agent started"
+
+    # Add the signing key to the agent
+    echo "adding signing_key_rsa to the agent"
+    ssh-add ~/.ssh/signing_key_rsa
+}
+
 # Check if ssh-agent is running
 if [ -n "$SSH_AUTH_SOCK" ] && [ -n "$SSH_AGENT_PID" ] && $(ps aux | grep -v grep | grep -q $SSH_AGENT_PID) ; then
     echo "ssh-agent is already running"
+
+    # check if ssh-add -l returns an error
+    ssh-add -l > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "ssh-agent is running but not initialized, restarting it"
+        start_ssh_agent
+        return 0
+    fi
+
     ssh-add -l | grep -q "$(ssh-keygen -lf ~/.ssh/signing_key_rsa.pub | awk '{print $2}')"
     if [ $? -eq 0 ]; then
         echo "signing_key_rsa is already added to the agent"
@@ -14,16 +39,4 @@ if [ -n "$SSH_AUTH_SOCK" ] && [ -n "$SSH_AGENT_PID" ] && $(ps aux | grep -v grep
     return 0
 fi
 
-killall ssh-agent > /dev/null 2>&1 || true
-unset SSH_AUTH_SOCK
-unset SSH_AGENT_PID
-
-# Start ssh-agent if it's not already running
-eval `ssh-agent -s`
-echo "ssh-agent started"
-
-# Add the signing key to the agent
-echo "adding signing_key_rsa to the agent"
-ssh-add ~/.ssh/signing_key_rsa
-
-
+start_ssh_agent
