@@ -23,6 +23,8 @@ godir() {
 
 # Installed Apps and scripts added to PATH
 export PATH=~/Apps/bin:~/dotfiles/scripts:$PATH
+export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+export PATH=/opt/homebrew/bin:$PATH
 
 # editor needs to be set for commits without -m
 export EDITOR='vim'
@@ -61,10 +63,10 @@ gitprune() {
 
     # taken from https://stackoverflow.com/questions/43489303/how-can-i-delete-all-git-branches-which-have-been-squash-and-merge-via-github
     git checkout -q main && git for-each-ref refs/heads/ "--format=%(refname:short)" | \
-    while read branch; 
-        do mergeBase=$(git merge-base main $branch) && 
-        [[ $(git cherry main $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _)) == "-"* ]] && 
-        eval "$CMD"; 
+    while read branch;
+        do mergeBase=$(git merge-base main $branch) &&
+        [[ $(git cherry main $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _)) == "-"* ]] &&
+        eval "$CMD";
     done
     return 0
 }
@@ -169,7 +171,7 @@ add-zsh-hook preexec update_terminal_cwd
 add-zsh-hook chpwd update_terminal_cwd
 
 # set vi mode and make the cursor a block underline cursor if we are in cmd mode
-bindkey -v 
+bindkey -v
 # I like these bindings and use them all the time. Make sure they stay the same
 bindkey "^R" history-incremental-search-backward
 bindkey "^E" end-of-line
@@ -187,13 +189,12 @@ zle -N zle-line-init
 zle -N zle-line-finish
 zle -N zle-keymap-select
 
+
+# source in the macbook specific config
+. ~/dotfiles/macbook.sh &>/dev/null
 # source in the virtualenv helpers
 . ~/dotfiles/virtualenv.sh 2>/dev/null
 # source in the docker-compose helpers
 . ~/dotfiles/docker.sh 2>/dev/null
 # source in the untracked environment specific configuration
 . ~/dotfiles/local-zshrc.sh 2>/dev/null
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
