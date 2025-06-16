@@ -1,0 +1,94 @@
+[
+  // pane quality of life
+  {
+    "bindings": {
+      "ctrl-h": "terminal_panel::ToggleFocus",
+      "ctrl-shift-h": "workspace::ToggleBottomDock",
+      "ctrl-b": "workspace::ToggleLeftDock",
+      "ctrl-i": "pane::ActivateNextItem",
+      "ctrl-r": "projects::OpenRecent",
+      "cmd-.": "pane::GoForward",
+      "cmd-,": "pane::GoBack",
+      "cmd-=": "zed::IncreaseBufferFontSize",
+      "cmd--": "zed::DecreaseBufferFontSize",
+      "shift-cmd-,": "zed::OpenSettings",
+    },
+  },
+  // editor quality of life
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-shift-.": "editor::ToggleCodeActions",
+      "cmd-l": "editor::Format",
+      "ctrl-e": "editor::MoveToEndOfLine",
+      "ctrl-shift-e": "editor::SelectToEndOfLine",
+      "ctrl-a": "editor::MoveToBeginningOfLine",
+      "ctrl-shift-a": "editor::SelectToBeginningOfLine",
+      "cmd-k cmd-a": "editor::SelectAll",
+      "cmd-k cmd-n": "editor::Rename",
+      "cmd-m": "editor::FindAllReferences",
+      "shift-cmd-m": "editor::GoToImplementation",
+      "cmd-i": "assistant::InlineAssist",
+    },
+  },
+  // multibuffer quality of life
+  {
+    "context": "!ContextEditor > Editor && mode == full && multibuffer",
+    "use_key_equivalents": true,
+    "bindings": {
+      "escape": "pane::CloseActiveItem",
+      "cmd-m": "pane::CloseActiveItem",
+      "shift-enter": "editor::OpenExcerpts",
+      "shift-cmd-enter": "editor::OpenExcerptsSplit",
+    },
+  },
+  // basic bindings
+  {
+    "bindings": {
+      "cmd-r": "workspace::Reload",
+      "cmd-k cmd-c": "workspace::CopyRelativePath",
+      "shift-cmd-f": "project_search::ToggleFocus",
+      "ctrl-j": "pane::ActivatePreviousItem",
+      "ctrl-k": "pane::ActivateNextItem",
+      "cmd-j": "pane::AlternateFile",
+      "cmd-h": "pane::TogglePinTab",
+      "shift-cmd-k": "workspace::ToggleRightDock",
+    },
+  },
+  // Support ctrl-r in the terminal
+  {
+    "context": "Terminal",
+    "bindings": {
+      "ctrl-r": ["terminal::SendKeystroke", "ctrl-r"],
+    },
+  },
+  // default to tab when accepting edit prediction from the AI
+  {
+    "context": "Editor && edit_prediction",
+    "bindings": {
+      "tab": "editor::AcceptEditPrediction",
+      "shift-tab": "editor::AcceptEditPrediction",
+      "ctrl-l": "editor::ComposeCompletion",
+      "alt-l": null,
+    },
+  },
+  // default to tab when accepting edit prediction from the AI
+  {
+    "context": "Editor && edit_prediction_conflict",
+    "bindings": {
+      "tab": "editor::AcceptEditPrediction",
+      "shift-tab": "editor::AcceptEditPrediction",
+      "ctrl-l": "editor::ComposeCompletion",
+      "alt-l": null,
+    },
+  },
+  // go up and down with j+k when searching in omnibar
+  {
+    "context": "Editor && mode == single_line",
+    "use_key_equivalents": true,
+    "bindings": {
+      "ctrl-k": "menu::SelectPrevious",
+      "ctrl-j": "menu::SelectNext",
+    },
+  },
+]

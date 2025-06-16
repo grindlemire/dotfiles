@@ -25,6 +25,8 @@ godir() {
 export PATH=~/Apps/bin:~/dotfiles/scripts:$PATH
 export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 export PATH=/opt/homebrew/bin:$PATH
+export PATH=~/Library/Python/3.9/bin:$PATH
+export PATH=$HOME/.local/bin:$PATH
 
 # editor needs to be set for commits without -m
 export EDITOR='vim'
@@ -189,6 +191,8 @@ zle -N zle-line-init
 zle -N zle-line-finish
 zle -N zle-keymap-select
 
+HOMEBREW_AUTO_UPDATE_SECS=2629746
+
 
 # source in the macbook specific config
 . ~/dotfiles/macbook.sh &>/dev/null
@@ -198,3 +202,5 @@ zle -N zle-keymap-select
 . ~/dotfiles/docker.sh 2>/dev/null
 # source in the untracked environment specific configuration
 . ~/dotfiles/local-zshrc.sh 2>/dev/null
+
+. "$HOME/.local/bin/env"
