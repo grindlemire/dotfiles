@@ -138,6 +138,32 @@ gpush() {
     eval "$CMD"
 }
 
+gadd() {
+    CMD="git add ."
+    echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
+    eval "$CMD"
+}
+
+gcommit() {
+    MSG="${1:-"snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"}"
+    if [ -n "$1" ]; then
+        MSG="$1"
+    fi
+
+    gadd
+    CMD="git commit -m \"$MSG\""
+    echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
+    eval "$CMD"
+}
+
+grevert() {
+    git reset --hard HEAD~1
+}
+
+grollback() {
+    git revert --no-edit HEAD
+}
+
 
 setopt PROMPT_SUBST
 # prompt
