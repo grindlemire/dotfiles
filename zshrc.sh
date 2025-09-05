@@ -135,6 +135,7 @@ gpush() {
 
     CMD="git push origin ${BRANCH}"
     echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
+    fixssh > /dev/null 2>&1
     eval "$CMD"
 }
 
