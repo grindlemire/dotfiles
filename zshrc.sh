@@ -54,7 +54,7 @@ has_param() {
     return 1
 }
 
-gitprune() {
+gprune() {
     CMD='git branch -D $branch'
     if has_param '--dry' "$@"; then
         CMD='echo "${Green}$branch ${Color_Off}is merged into main and can be deleted"'
@@ -87,10 +87,6 @@ to_gif() {
 # zsh stuff
 ###############################################################################
 
-sum() {
-    awk '{ sum += $1 } END { print sum }'
-}
-
 myip() {
     ifconfig en0 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
 }
@@ -109,16 +105,13 @@ fixssh() {
 	. ensure-ssh-agent
 }
 
-# this will prune git branches that have been merged and allows you to edit them before deleting them
-alias gprune=gitprune
-
-git_branch() {
+gbranch() {
         printf "%s" "$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')"
 }
 
 # alias git pull and git push from the current branch
 gpull() {
-    BRANCH=$(git_branch)
+    BRANCH=$(gbranch)
     if [ -n "$1" ]; then
         BRANCH=$1
     fi
@@ -128,7 +121,7 @@ gpull() {
     eval "$CMD"
 }
 gpush() {
-    BRANCH=$(git_branch)
+    BRANCH=$(gbranch)
     if [ -n "$1" ]; then
         BRANCH=$1
     fi
@@ -168,7 +161,7 @@ grollback() {
 
 setopt PROMPT_SUBST
 # prompt
-PROMPT='%(?^%F{green}[%n@%m] [%1~] [$(git_branch)]%f^%F{red}[%n@%m] [%1~] [$(git_branch)]%f)$ '
+PROMPT='%(?^%F{green}[%n@%m] [%1~] [$(gbranch)]%f^%F{red}[%n@%m] [%1~] [$(gbranch)]%f)$ '
 
 # in-place delete
 bindkey '^[[3~'  delete-char
@@ -219,7 +212,6 @@ zle -N zle-line-finish
 zle -N zle-keymap-select
 
 HOMEBREW_AUTO_UPDATE_SECS=2629746
-
 
 # source in the macbook specific config
 . ~/dotfiles/macbook.sh &>/dev/null
