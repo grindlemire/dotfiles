@@ -9,6 +9,10 @@ alias lla='ls -lha' # long and hidden
 alias emacs='emacs -nw'
 alias cap='ret=$?'
 alias check='[ $ret == 0 ] && true || false'
+lc() {
+    local target="${1:-.}"
+    find "$target" -type f \( \( -name '*.go' -a ! -name '*.sql.go' -a ! -name '*_templ.go' \) -o -name '*.templ' \) -print0 | xargs -0 wc -l
+}
 
 # ls colors for bsd/linux
 ls --color &>/dev/null 2>&1 && alias ls='ls --color=tty' || alias ls='ls -G'
@@ -109,6 +113,109 @@ gbranch() {
         printf "%s" "$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')"
 }
 
+wtc() {
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "wtc: not inside a git repository" >&2
+        return 1
+    fi
+
+    if [ -z "$1" ]; then
+        echo "usage: wtc <branch> [path]" >&2
+        return 1
+    fi
+
+    local branch="$1"
+    local worktree_path="$2"
+    local repo_root
+    repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 1
+    local default_parent="$repo_root/.worktrees"
+
+    if [ -z "$worktree_path" ]; then
+        worktree_path="${default_parent}/${branch}"
+    fi
+
+    if [ -e "$worktree_path" ]; then
+        echo "wtc: target path already exists: $worktree_path" >&2
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$worktree_path")" || return 1
+
+    if git show-ref --verify --quiet "refs/heads/${branch}"; then
+        git worktree add "$worktree_path" "$branch" || return 1
+    else
+        git worktree add -b "$branch" "$worktree_path" || return 1
+    fi
+
+    cd "$worktree_path" || return 1
+}
+
+wtd() {
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "wtd: not inside a git repository" >&2
+        return 1
+    fi
+
+    local force_flag=0
+    if [ "$1" = "-f" ] || [ "$1" = "--force" ]; then
+        force_flag=1
+        shift
+    fi
+
+    if [ -z "$1" ]; then
+        echo "usage: wtd [-f|--force] <path-or-branch>" >&2
+        return 1
+    fi
+
+    local target="$1"
+    local worktree_path=""
+
+    if [ -d "$target" ]; then
+        worktree_path="$target"
+    else
+        # Look in the worktree list for the branch and print the path to it
+        worktree_path=$(git worktree list --porcelain | awk -v t="$target" 'BEGIN { RS=""; FS="\n" } {
+            path=""; branch="";
+            for (i=1;i<=NF;i++) {
+                if ($i ~ /^worktree /) { path=substr($i,10) }
+                else if ($i ~ /^branch /) { branch=substr($i,8); gsub(/^refs\/heads\//,"",branch) }
+            }
+            if (path == t || branch == t) { print path; exit }
+        }')
+        
+        # if we didn't find the worktree path, look in the default parent
+        if [ -z "$worktree_path" ]; then
+            local repo_root
+            repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 1
+            local default_parent="$repo_root/.worktrees"
+            local candidate="$default_parent/$target"
+            if [ -d "$candidate" ]; then
+                worktree_path="$candidate"
+            fi
+        fi
+    fi
+
+    if [ -z "$worktree_path" ]; then
+        echo "wtd: no worktree found for '$target'" >&2
+        return 1
+    fi
+
+    if [ $force_flag -eq 1 ]; then
+        git worktree remove --force "$worktree_path"
+    else
+        git worktree remove "$worktree_path"
+    fi
+}
+
+wtl() {
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "wtl: not inside a git repository" >&2
+        return 1
+    fi
+
+    git worktree list --porcelain | awk 'BEGIN { RS=""; FS="\n" } { path=""; head=""; branch=""; for (i=1;i<=NF;i++) { if ($i ~ /^worktree /) { path=substr($i,10) } else if ($i ~ /^branch /) { branch=substr($i,8) } else if ($i ~ /^HEAD /) { head=substr($i,6) } } gsub(/^refs\/heads\//, "", branch); printf "%-40s %-25s %s\n", path, branch, head }'
+}
+
 # alias git pull and git push from the current branch
 gpull() {
     BRANCH=$(gbranch)
@@ -128,7 +235,6 @@ gpush() {
 
     CMD="git push origin ${BRANCH}"
     echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
-    fixssh > /dev/null 2>&1
     eval "$CMD"
 }
 
@@ -141,12 +247,13 @@ gadd() {
 gcommit() {
     MSG="${1:-"snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"}"
     if [ -n "$1" ]; then
-        MSG="$1"
+        MSG="$@"
     fi
 
     gadd
     CMD="git commit -m \"$MSG\""
     echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
+    fixssh > /dev/null 2>&1
     eval "$CMD"
 }
 
