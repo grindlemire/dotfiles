@@ -52,6 +52,18 @@ wtc() {
 
     local branch="$1"
     local worktree_path="$2"
+
+    # First check if a worktree already exists for this branch
+    local existing_path
+    existing_path=$(_wt_lookup_path "$branch")
+
+    if [ -n "$existing_path" ]; then
+        # Worktree already exists, just cd to it
+        cd "$existing_path" || return 1
+        return 0
+    fi
+
+    # No existing worktree, create a new one
     local default_parent
     default_parent=$(_wt_default_dir) || return 1
 

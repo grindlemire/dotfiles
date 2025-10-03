@@ -144,7 +144,13 @@ gadd() {
 gcommit() {
     MSG="${1:-"snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"}"
     if [ -n "$1" ]; then
-        MSG="$@"
+        if [ "$1" = "-m" ]; then
+            # Skip -m and use remaining arguments as message
+            shift
+            MSG="$@"
+        else
+            MSG="$@"
+        fi
     fi
 
     gadd
