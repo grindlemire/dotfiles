@@ -169,6 +169,8 @@ grollback() {
 }
 
 grelease() {
+    fixssh > /dev/null 2>&1
+    
     local version_type="${1:-patch}"
     
     # Validate version type
