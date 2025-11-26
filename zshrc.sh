@@ -124,6 +124,7 @@ gpull() {
     echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
     eval "$CMD"
 }
+
 gpush() {
     BRANCH=$(gbranch)
     if [ -n "$1" ]; then
@@ -142,15 +143,14 @@ gadd() {
 }
 
 gcommit() {
-    MSG="${1:-"snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"}"
-    if [ -n "$1" ]; then
-        if [ "$1" = "-m" ]; then
-            # Skip -m and use remaining arguments as message
-            shift
-            MSG="$@"
-        else
-            MSG="$@"
-        fi
+    if [ -n "$1" ] && [ "$1" = "-m" ]; then
+        # Skip -m and use remaining arguments as message
+        shift
+        MSG="$@"
+    elif [ -n "$1" ]; then
+        MSG="$@"
+    else
+        MSG="snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
     fi
 
     gadd
@@ -166,6 +166,91 @@ grevert() {
 
 grollback() {
     git revert --no-edit HEAD
+}
+
+grelease() {
+    local version_type="${1:-patch}"
+    
+    # Validate version type
+    if [[ ! "$version_type" =~ ^(patch|minor|major)$ ]]; then
+        echo -e "${Red}Error: Version type must be patch, minor, or major${Color_Off}"
+        return 1
+    fi
+    
+    # Fetch latest tags from remote
+    echo -e "${Green}Fetching latest tags...${Color_Off}"
+    git fetch --tags --quiet
+    
+    # Get the latest version tag (vX.X.X format)
+    local latest_tag=$(git tag -l 'v*' | sort -V | tail -n 1)
+    
+    # If no tags exist, start at v0.0.1
+    if [ -z "$latest_tag" ]; then
+        latest_tag="v0.0.0"
+        echo -e "${Green}No existing tags found, starting from v0.0.0${Color_Off}"
+    else
+        echo -e "${Green}Current latest tag: ${latest_tag}${Color_Off}"
+    fi
+    
+    # Extract version numbers (remove 'v' prefix)
+    local version="${latest_tag#v}"
+    local major minor patch
+    
+    # Parse version into components
+    IFS='.' read -r major minor patch <<< "$version"
+    
+    # Ensure we have valid numbers (handle missing components)
+    major=${major:-0}
+    minor=${minor:-0}
+    patch=${patch:-0}
+    
+    # Increment based on version type
+    case "$version_type" in
+        major)
+            major=$((major + 1))
+            minor=0
+            patch=0
+            ;;
+        minor)
+            minor=$((minor + 1))
+            patch=0
+            ;;
+        patch)
+            patch=$((patch + 1))
+            ;;
+    esac
+    
+    local new_version="v${major}.${minor}.${patch}"
+    
+    echo -e "${Green}New version: ${new_version}${Color_Off}"
+    
+    # Check if tag already exists
+    if git rev-parse "$new_version" >/dev/null 2>&1; then
+        echo -e "${Red}Error: Tag ${new_version} already exists${Color_Off}"
+        return 1
+    fi
+    
+    # Create and push the tag
+    CMD="git tag -a ${new_version} -m \"Release ${new_version}\""
+    echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
+    eval "$CMD"
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${Red}Error: Failed to create tag${Color_Off}"
+        return 1
+    fi
+    
+    CMD="git push origin ${new_version}"
+    echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
+    eval "$CMD"
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${Red}Error: Failed to push tag${Color_Off}"
+        return 1
+    fi
+    
+    echo -e "${Green}Successfully released ${new_version}${Color_Off}"
+    return 0
 }
 
 
@@ -235,3 +320,6 @@ HOMEBREW_AUTO_UPDATE_SECS=2629746
 . ~/dotfiles/local-zshrc.sh 2>/dev/null
 
 . "$HOME/.local/bin/env"
+
+# Added by Antigravity
+export PATH="/Users/joelholsteen/.antigravity/antigravity/bin:$PATH"
