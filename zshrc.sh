@@ -241,15 +241,13 @@ grelease() {
     fi
     
     CMD="git push origin ${new_version}"
-    echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
+    echo -e "\n${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
     eval "$CMD"
     
     if [ $? -ne 0 ]; then
         echo -e "${Red}Error: Failed to push tag${Color_Off}"
         return 1
     fi
-    
-    echo -e "${Green}Successfully released ${new_version}${Color_Off}"
     return 0
 }
 
