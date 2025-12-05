@@ -143,6 +143,8 @@ gadd() {
 }
 
 gcommit() {
+    local NEED_GADD=true
+    
     if [ -n "$1" ] && [ "$1" = "-m" ]; then
         # Skip -m and use remaining arguments as message
         shift
@@ -150,10 +152,21 @@ gcommit() {
     elif [ -n "$1" ]; then
         MSG="$@"
     else
-        MSG="snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        # Auto-generate using Claude Code
+        gadd
+        NEED_GADD=false
+        echo -e "${Green}Generating commit message...${Color_Off}"
+        MSG=$(git diff --cached --diff-algorithm=minimal | claude -p "Generate a concise git commit message (subject line only, no body, max 72 chars) for these changes. Output ONLY the message, nothing else." 2>/dev/null)
+        CLAUDE_EXIT=$?
+        if [ -z "$MSG" ] || [ $CLAUDE_EXIT -ne 0 ]; then
+            MSG="snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo -e "${Red}Claude generation failed, using timestamp${Color_Off}"
+        fi
     fi
 
-    gadd
+    if [ "$NEED_GADD" = true ]; then
+        gadd
+    fi
     CMD="git commit -m \"$MSG\""
     echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
     fixssh > /dev/null 2>&1
