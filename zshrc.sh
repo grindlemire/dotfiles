@@ -280,20 +280,14 @@ grelease() {
             commit_log=$(git log --oneline ${latest_tag}..${new_version})
         fi
         
-        # Generate title and body via Claude
-        local release_title
-        release_title=$(echo "$commit_log" | claude -p "Generate a short release title (max 50 chars) for version ${new_version}. Output ONLY the title." 2>/dev/null)
-        local CLAUDE_TITLE_EXIT=$?
+        # Generate body via Claude
+        local release_title="$new_version"
         
         local release_body
         release_body=$(echo "$commit_log" | claude -p "Generate release notes in markdown for these commits. Include a brief summary and bullet points for notable changes. Output ONLY the markdown." 2>/dev/null)
         local CLAUDE_BODY_EXIT=$?
         
         # Fallback if Claude fails
-        if [ -z "$release_title" ] || [ $CLAUDE_TITLE_EXIT -ne 0 ]; then
-            release_title="Release ${new_version}"
-            echo -e "${Red}Claude title generation failed, using default${Color_Off}"
-        fi
         if [ -z "$release_body" ] || [ $CLAUDE_BODY_EXIT -ne 0 ]; then
             release_body="$commit_log"
             echo -e "${Red}Claude body generation failed, using commit log${Color_Off}"
