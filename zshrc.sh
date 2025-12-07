@@ -299,12 +299,20 @@ grelease() {
             echo -e "${Red}Claude body generation failed, using commit log${Color_Off}"
         fi
         
+        # Create temporary file for release notes to handle newlines properly
+        local notes_file=$(mktemp)
+        echo "$release_body" > "$notes_file"
+        
         # Create GitHub release
-        CMD="gh release create ${new_version} --title \"${release_title}\" --notes \"${release_body}\""
+        CMD="gh release create ${new_version} --title \"${release_title}\" --notes-file \"${notes_file}\""
         echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
         eval "$CMD"
+        local release_exit=$?
         
-        if [ $? -ne 0 ]; then
+        # Clean up temporary file
+        rm -f "$notes_file"
+        
+        if [ $release_exit -ne 0 ]; then
             echo -e "${Red}Error: Failed to create GitHub release${Color_Off}"
             return 1
         fi
