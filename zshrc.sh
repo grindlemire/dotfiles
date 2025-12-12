@@ -181,6 +181,76 @@ grollback() {
     git revert --no-edit HEAD
 }
 
+gpr() {
+    fixssh > /dev/null 2>&1
+    
+    local current_branch=$(gbranch)
+    if [ -z "$current_branch" ]; then
+        echo -e "${Red}Error: Not in a git repository${Color_Off}"
+        return 1
+    fi
+    
+    # Fetch latest main branch
+    echo -e "${Green}Fetching latest main branch...${Color_Off}"
+    git fetch origin main --quiet 2>/dev/null || git fetch origin master --quiet 2>/dev/null
+    
+    # Determine main branch name (main or master)
+    local main_branch="main"
+    if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+        if git rev-parse --verify origin/master >/dev/null 2>&1; then
+            main_branch="master"
+        else
+            echo -e "${Red}Error: Could not find main or master branch${Color_Off}"
+            return 1
+        fi
+    fi
+    
+    # Get diff between current branch and main
+    echo -e "${Green}Generating PR title and description...${Color_Off}"
+    local diff_output
+    diff_output=$(git diff origin/${main_branch}..HEAD --diff-algorithm=minimal 2>/dev/null)
+    
+    if [ -z "$diff_output" ]; then
+        echo -e "${Red}Error: No differences found between ${current_branch} and ${main_branch}${Color_Off}"
+        return 1
+    fi
+    
+    # Get commit log for context
+    local commit_log
+    commit_log=$(git log --oneline origin/${main_branch}..HEAD 2>/dev/null)
+    
+    # Generate PR title and description using Claude
+    local pr_content
+    pr_content=$(echo -e "$commit_log\n\n---\n\n$diff_output" | claude -p "Generate a GitHub pull request title and description for these changes. The title should be concise (max 72 chars) and the description should include a brief summary and bullet points for notable changes. Format as:\n\nTITLE: <title>\n\nDESCRIPTION:\n<description>" 2>/dev/null)
+    local CLAUDE_EXIT=$?
+    
+    if [ -z "$pr_content" ] || [ $CLAUDE_EXIT -ne 0 ]; then
+        echo -e "${Red}Claude generation failed, using commit log${Color_Off}"
+        pr_content="TITLE: Update from ${current_branch}\n\nDESCRIPTION:\n$(echo "$commit_log" | head -n 10)"
+    fi
+    
+    # Extract title and description
+    local pr_title
+    local pr_description
+    pr_title=$(echo "$pr_content" | grep -A 1 "^TITLE:" | tail -n 1 | sed 's/^[[:space:]]*//')
+    pr_description=$(echo "$pr_content" | sed -n '/^DESCRIPTION:/,$p' | sed '1d' | sed 's/^[[:space:]]*//')
+    
+    # Fallback if extraction failed
+    if [ -z "$pr_title" ]; then
+        pr_title="Update from ${current_branch}"
+    fi
+    if [ -z "$pr_description" ]; then
+        pr_description="$commit_log"
+    fi
+    
+    # Output in copyable format
+    echo -e "\n${Green}=== PR Title ===${Color_Off}"
+    echo "$pr_title"
+    echo -e "\n${Green}=== PR Description ===${Color_Off}"
+    echo "$pr_description"
+    echo ""
+}
+
 grelease() {
     fixssh > /dev/null 2>&1
     
