@@ -226,7 +226,9 @@ gpr() {
     
     if [ -z "$pr_content" ] || [ $CLAUDE_EXIT -ne 0 ]; then
         echo -e "${Red}Claude generation failed, using commit log${Color_Off}"
-        pr_content="TITLE: Update from ${current_branch}\n\nDESCRIPTION:\n$(echo "$commit_log" | head -n 10)"
+        # Extract first 2-3 words from the most recent commit message as title
+        local fallback_title=$(echo "$commit_log" | head -n 1 | sed 's/^[a-f0-9]* //' | awk '{print $1, $2}')
+        pr_content="TITLE: ${fallback_title}\n\nDESCRIPTION:\n## Changes\n$(echo "$commit_log" | head -n 10 | sed 's/^/- /')"
     fi
     
     # Extract title and description
@@ -237,10 +239,11 @@ gpr() {
     
     # Fallback if extraction failed
     if [ -z "$pr_title" ]; then
-        pr_title="Update from ${current_branch}"
+        # Use first 2 words from latest commit message
+        pr_title=$(echo "$commit_log" | head -n 1 | sed 's/^[a-f0-9]* //' | awk '{print $1, $2}')
     fi
     if [ -z "$pr_description" ]; then
-        pr_description="$commit_log"
+        pr_description="## Changes\n$(echo "$commit_log" | sed 's/^/- /')"
     fi
     
     # Output in copyable format
