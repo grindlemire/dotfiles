@@ -4,41 +4,143 @@ Red="\033[0;31m"
 Green='\033[0;32m'
 Color_Off='\033[0m'
 
-# use richgo if it is availalbe
+show_usage() {
+    cat << EOF
+Usage: gtest <target> [go test flags]
+
+Target can be:
+  - Package name/path (e.g., "handlers" or "pkg/auth")
+  - Test function name (e.g., "TestUserLogin" or just "UserLogin")
+
+Examples:
+  gtest handlers              # Run all tests in handlers packages recursively
+  gtest TestUserLogin         # Run specific test by name
+  gtest UserLogin             # Match test containing "UserLogin"
+  gtest pkg/auth -v           # Run auth tests with verbose output
+  gtest handlers --exact TestUserCreate  # Exact test name match
+
+Flags:
+  --exact                     # Exact test name match (not substring)
+  -h, --help                  # Show this help message
+EOF
+}
+
+# Show help
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    show_usage
+    exit 0
+fi
+
+# Validate we're in a Go project
+if [ ! -f "go.mod" ]; then
+    echo -e "${Red}Error: Not in a Go module (go.mod not found)${Color_Off}"
+    exit 1
+fi
+
+# Use richgo if available
 [[ -x "$(which richgo)" ]] && BIN='richgo' || BIN='go'
 
-# ensure ripgrep installed 
-if ! [ -x "$(which rg)" ]; then 
-    echo -e "${Red} please install ripgrep: ${Color_Off}\n    brew install ripgrep"
-    return 1 
+# Ensure ripgrep installed
+if ! [ -x "$(which rg)" ]; then
+    echo -e "${Red}Error: please install ripgrep:${Color_Off}\n    brew install ripgrep"
+    exit 1
 fi
 
+# Default to current directory if no target specified
 if [ -z "$1" ]; then
-    echo "must specify a test target or path"
-    return 1
+    TARGET="."
+else
+    TARGET="$1"
+    shift
 fi
 
-PACKAGE_STR="${1//[$\^]/}"
-SEARCH_STR=$(echo $PACKAGE_STR | cut -d '/' -f-1)
-FILTER=""    
-IFS=$'\n'
-PACKAGE_DIRS=($(rg --files | rg $PACKAGE_STR | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
-DIRS=("${PACKAGE_DIRS[@]}")
-FILE_DIRS=()
+# Check for exact match flag
+MATCH_MODE="substring"
+if [[ "$1" == "--exact" ]]; then
+    MATCH_MODE="exact"
+    shift
+fi
 
-# if we didn't find any files with the name of the filter then we must be looking for a test name
-if [[ ${#PACKAGE_DIRS[@]} = 0 ]]; then 
-    FILE_DIRS=($(rg -l "$SEARCH_STR" | xargs dirname | sort | uniq | sed 's|^|./|g' | sed 's|$|/...|g'))
-    DIRS=("${PACKAGE_DIRS[@]}" "${FILE_DIRS[@]}")
-fi       
-# if we have files generated from finding the symbol in a test then filter the tests
-if [[ ${#FILE_DIRS[@]} -ge 1 ]]; then 
-    FILTER="-run $1 "
-fi   
-shift
+# Decision tree for determining if target is a directory path or test name:
+# 1. "." → current directory
+# 2. Existing directory path → use as directory
+# 3. Starts with Test/Bench/Fuzz/Example and contains "/" → test with subtest
+# 4. Starts with Test/Bench/Fuzz/Example → test name
+# 5. Contains "/" → likely a package path (e.g., pkg/handlers)
+# 6. Otherwise → search for files matching the pattern, fallback to test name
 
-OTHER_ARGS="$(printf '%s ' ${@[*]})"
-DIR_STR=$(printf '%s ' ${DIRS[*]})
-CMD="$(printf '%s test %s %s %s' $BIN ${DIR_STR} $FILTER $OTHER_ARGS)"
-echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
+if [[ "$TARGET" == "." ]]; then
+    # Special case: current directory
+    CMD="$BIN test ./... $@"
+    echo -e "${Green}Testing current directory recursively${Color_Off}"
+
+elif [ -d "$TARGET" ]; then
+    # It's an actual directory that exists
+    CMD="$BIN test ./${TARGET}/... $@"
+    echo -e "${Green}Testing directory: ${TARGET}/...${Color_Off}"
+
+elif [[ "$TARGET" =~ ^(Test|Bench|Fuzz|Example) ]]; then
+    # Starts with Test/Bench/Fuzz/Example → it's a test/benchmark/fuzz/example function
+    case "$MATCH_MODE" in
+        exact)
+            FILTER="-run '^${TARGET}$'"
+            echo -e "${Green}Searching for test: ${TARGET}${Color_Off}"
+            ;;
+        substring)
+            # For subtests with / (e.g., TestFoo/subtest), pass as-is
+            if [[ "$TARGET" =~ / ]]; then
+                FILTER="-run '${TARGET}'"
+                echo -e "${Green}Searching for test/subtest: ${TARGET}${Color_Off}"
+            else
+                # Go's -run is already unanchored, no need for .*
+                FILTER="-run '${TARGET}'"
+                echo -e "${Green}Searching for tests matching: ${TARGET}${Color_Off}"
+            fi
+            ;;
+    esac
+    CMD="$BIN test ./... $FILTER $@"
+
+elif [[ "$TARGET" =~ / ]]; then
+    # Contains "/" but doesn't start with Test/Bench/etc → probably a package path
+    # Check if we can find files in this path
+    if [ -d "$TARGET" ]; then
+        CMD="$BIN test ./${TARGET}/... $@"
+        echo -e "${Green}Testing package: ${TARGET}/...${Color_Off}"
+    else
+        # Path doesn't exist, but might be a partial path - try to find matching files
+        SANITIZED="${TARGET//[$\^]/}"
+        MATCHING_FILE=$(rg --files | rg "$SANITIZED" | head -1)
+
+        if [ -n "$MATCHING_FILE" ]; then
+            DIR=$(dirname "$MATCHING_FILE")
+            CMD="$BIN test ./${DIR}/... $@"
+            echo -e "${Green}Testing package: ${DIR}/...${Color_Off}"
+        else
+            # Nothing found - maybe it's an unusual test name with / in it
+            echo -e "${Green}No package found, treating as test pattern: ${TARGET}${Color_Off}"
+            FILTER="-run '${TARGET}'"
+            CMD="$BIN test ./... $FILTER $@"
+        fi
+    fi
+
+else
+    # No "/" and doesn't start with Test/Bench/etc
+    # Try to find as a package/directory name first
+    SANITIZED="${TARGET//[$\^]/}"
+    MATCHING_FILE=$(rg --files | rg "$SANITIZED" | head -1)
+
+    if [ -n "$MATCHING_FILE" ]; then
+        # Found files matching - get the directory and test it recursively
+        DIR=$(dirname "$MATCHING_FILE")
+        CMD="$BIN test ./${DIR}/... $@"
+        echo -e "${Green}Testing package: ${DIR}/...${Color_Off}"
+    else
+        # No files found - treat as a test name substring
+        FILTER="-run '${TARGET}'"
+        CMD="$BIN test ./... $FILTER $@"
+        echo -e "${Green}No package found, searching for tests matching: ${TARGET}${Color_Off}"
+    fi
+fi
+
+echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
 eval "$CMD"
