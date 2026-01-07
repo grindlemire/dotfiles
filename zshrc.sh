@@ -144,7 +144,7 @@ gadd() {
 
 gcommit() {
     local NEED_GADD=true
-    
+
     if [ -n "$1" ] && [ "$1" = "-m" ]; then
         # Skip -m and use remaining arguments as message
         shift
@@ -181,102 +181,108 @@ grollback() {
     git revert --no-edit HEAD
 }
 
-gpr() {
-    fixssh > /dev/null 2>&1
-    
-    local current_branch=$(gbranch)
-    if [ -z "$current_branch" ]; then
-        echo -e "${Red}Error: Not in a git repository${Color_Off}"
+gs() {
+    git status -sb
+}
+
+# pretty git log
+glog() {
+    git log --graph --pretty=format:'%C(yellow)%h%Creset -%C(auto)%d%Creset %s %C(green)(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit "${@:-HEAD~10..HEAD}"
+}
+
+# better diff viewing with pager
+gdiff() {
+    git diff --color=always "$@" | less -R
+}
+
+# staged diff viewing with pager
+gdiffs() {
+    git diff --staged --color=always "$@" | less -R
+}
+
+# search for processes (cross-platform)
+psgrep() {
+    ps aux | grep -v grep | grep -i -e VSZ -e "$@"
+}
+
+# kill process on specific port (cross-platform)
+killport() {
+    if [ -z "$1" ]; then
+        echo "usage: killport <port>"
         return 1
     fi
-    
-    # Fetch latest main branch
-    echo -e "${Green}Fetching latest main branch...${Color_Off}"
-    git fetch origin main --quiet 2>/dev/null || git fetch origin master --quiet 2>/dev/null
-    
-    # Determine main branch name (main or master)
-    local main_branch="main"
-    if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
-        if git rev-parse --verify origin/master >/dev/null 2>&1; then
-            main_branch="master"
+
+    if command -v lsof >/dev/null 2>&1; then
+        # macOS and most Linux with lsof
+        lsof -ti tcp:"$1" | xargs kill -9 2>/dev/null
+    elif command -v ss >/dev/null 2>&1; then
+        # Linux with ss (iproute2)
+        local pid=$(ss -lptn "sport = :$1" | grep -oP 'pid=\K[0-9]+' | head -1)
+        if [ -n "$pid" ]; then
+            kill -9 "$pid"
         else
-            echo -e "${Red}Error: Could not find main or master branch${Color_Off}"
+            echo "No process found on port $1"
             return 1
         fi
-    fi
-    
-    # Get diff between current branch and main
-    echo -e "${Green}Generating PR title and description...${Color_Off}"
-    local diff_output
-    diff_output=$(git diff origin/${main_branch}..HEAD --diff-algorithm=minimal 2>/dev/null)
-    
-    if [ -z "$diff_output" ]; then
-        echo -e "${Red}Error: No differences found between ${current_branch} and ${main_branch}${Color_Off}"
+    else
+        echo "Neither lsof nor ss available"
         return 1
     fi
-    
-    # Get commit log for context
-    local commit_log
-    commit_log=$(git log --oneline origin/${main_branch}..HEAD 2>/dev/null)
-    
-    # Generate PR title and description using Claude
-    local pr_content
-    pr_content=$(echo -e "$commit_log\n\n---\n\n$diff_output" | claude -p "Generate a GitHub pull request title and description for these changes. The title should be concise (max 72 chars) and the description should include a brief summary and bullet points for notable changes. Format as:\n\nTITLE: <title>\n\nDESCRIPTION:\n<description>" 2>/dev/null)
-    local CLAUDE_EXIT=$?
-    
-    if [ -z "$pr_content" ] || [ $CLAUDE_EXIT -ne 0 ]; then
-        echo -e "${Red}Claude generation failed, using commit log${Color_Off}"
-        # Extract first 2-3 words from the most recent commit message as title
-        local fallback_title=$(echo "$commit_log" | head -n 1 | sed 's/^[a-f0-9]* //' | awk '{print $1, $2}')
-        pr_content="TITLE: ${fallback_title}\n\nDESCRIPTION:\n## Changes\n$(echo "$commit_log" | head -n 10 | sed 's/^/- /')"
+}
+
+# universal archive extractor
+extract() {
+    if [ -z "$1" ]; then
+        echo "usage: extract <archive>"
+        return 1
     fi
-    
-    # Extract title and description
-    local pr_title
-    local pr_description
-    pr_title=$(echo "$pr_content" | grep -A 1 "^TITLE:" | tail -n 1 | sed 's/^[[:space:]]*//')
-    pr_description=$(echo "$pr_content" | sed -n '/^DESCRIPTION:/,$p' | sed '1d' | sed 's/^[[:space:]]*//')
-    
-    # Fallback if extraction failed
-    if [ -z "$pr_title" ]; then
-        # Use first 2 words from latest commit message
-        pr_title=$(echo "$commit_log" | head -n 1 | sed 's/^[a-f0-9]* //' | awk '{print $1, $2}')
+
+    if [ -f "$1" ]; then
+        case "$1" in
+            *.tar.bz2)   tar xjf "$1"     ;;
+            *.tar.gz)    tar xzf "$1"     ;;
+            *.bz2)       bunzip2 "$1"     ;;
+            *.rar)       unrar x "$1"     ;;
+            *.gz)        gunzip "$1"      ;;
+            *.tar)       tar xf "$1"      ;;
+            *.tbz2)      tar xjf "$1"     ;;
+            *.tgz)       tar xzf "$1"     ;;
+            *.zip)       unzip "$1"       ;;
+            *.Z)         uncompress "$1"  ;;
+            *.7z)        7z x "$1"        ;;
+            *.tar.xz)    tar xf "$1"      ;;
+            *.xz)        xz -d "$1"       ;;
+            *)           echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+        return 1
     fi
-    if [ -z "$pr_description" ]; then
-        pr_description="## Changes\n$(echo "$commit_log" | sed 's/^/- /')"
-    fi
-    
-    # Output in copyable format
-    echo -e "\n${Green}=== PR Title ===${Color_Off}"
-    echo "$pr_title"
-    echo -e "\n${Green}=== PR Description ===${Color_Off}"
-    echo "$pr_description"
-    echo ""
 }
 
 grelease() {
     fixssh > /dev/null 2>&1
-    
+
     local create_release=false
     if [ "$1" = "-push" ]; then
         create_release=true
         shift
     fi
     local version_type="${1:-patch}"
-    
+
     # Validate version type
     if [[ ! "$version_type" =~ ^(patch|minor|major)$ ]]; then
         echo -e "${Red}Error: Version type must be patch, minor, or major${Color_Off}"
         return 1
     fi
-    
+
     # Fetch latest tags from remote
     echo -e "${Green}Fetching latest tags...${Color_Off}"
     git fetch --tags --quiet
-    
+
     # Get the latest version tag (vX.X.X format)
     local latest_tag=$(git tag -l 'v*' | sort -V | tail -n 1)
-    
+
     # If no tags exist, start at v0.0.1
     if [ -z "$latest_tag" ]; then
         latest_tag="v0.0.0"
@@ -284,19 +290,19 @@ grelease() {
     else
         echo -e "${Green}Current latest tag: ${latest_tag}${Color_Off}"
     fi
-    
+
     # Extract version numbers (remove 'v' prefix)
     local version="${latest_tag#v}"
     local major minor patch
-    
+
     # Parse version into components
     IFS='.' read -r major minor patch <<< "$version"
-    
+
     # Ensure we have valid numbers (handle missing components)
     major=${major:-0}
     minor=${minor:-0}
     patch=${patch:-0}
-    
+
     # Increment based on version type
     case "$version_type" in
         major)
@@ -312,39 +318,39 @@ grelease() {
             patch=$((patch + 1))
             ;;
     esac
-    
+
     local new_version="v${major}.${minor}.${patch}"
-    
+
     echo -e "${Green}New version: ${new_version}${Color_Off}"
-    
+
     # Check if tag already exists
     if git rev-parse "$new_version" >/dev/null 2>&1; then
         echo -e "${Red}Error: Tag ${new_version} already exists${Color_Off}"
         return 1
     fi
-    
+
     # Create and push the tag
     CMD="git tag -a ${new_version} -m \"Release ${new_version}\""
     echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
     eval "$CMD"
-    
+
     if [ $? -ne 0 ]; then
         echo -e "${Red}Error: Failed to create tag${Color_Off}"
         return 1
     fi
-    
+
     CMD="git push origin ${new_version}"
     echo -e "\n${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
     eval "$CMD"
-    
+
     if [ $? -ne 0 ]; then
         echo -e "${Red}Error: Failed to push tag${Color_Off}"
         return 1
     fi
-    
+
     if [ "$create_release" = true ]; then
         echo -e "${Green}Generating release notes...${Color_Off}"
-        
+
         # Get commits between previous and new tag
         local commit_log
         if [ "$latest_tag" = "v0.0.0" ]; then
@@ -352,33 +358,33 @@ grelease() {
         else
             commit_log=$(git log --oneline ${latest_tag}..${new_version})
         fi
-        
+
         # Generate body via Claude
         local release_title="$new_version"
-        
+
         local release_body
         release_body=$(echo "$commit_log" | claude -p "Generate release notes in markdown for these commits. Include a brief summary and bullet points for notable changes. Output ONLY the markdown." 2>/dev/null)
         local CLAUDE_BODY_EXIT=$?
-        
+
         # Fallback if Claude fails
         if [ -z "$release_body" ] || [ $CLAUDE_BODY_EXIT -ne 0 ]; then
             release_body="$commit_log"
             echo -e "${Red}Claude body generation failed, using commit log${Color_Off}"
         fi
-        
+
         # Create temporary file for release notes to handle newlines properly
         local notes_file=$(mktemp)
         echo "$release_body" > "$notes_file"
-        
+
         # Create GitHub release
         CMD="gh release create ${new_version} --title \"${release_title}\" --notes-file \"${notes_file}\""
         echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
         eval "$CMD"
         local release_exit=$?
-        
+
         # Clean up temporary file
         rm -f "$notes_file"
-        
+
         if [ $release_exit -ne 0 ]; then
             echo -e "${Red}Error: Failed to create GitHub release${Color_Off}"
             return 1
