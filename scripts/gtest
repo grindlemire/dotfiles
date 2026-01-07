@@ -6,22 +6,29 @@ Color_Off='\033[0m'
 
 show_usage() {
     cat << EOF
-Usage: gtest <target> [go test flags]
+Usage: gtest [options] [target] [go test flags]
 
 Target can be:
   - Package name/path (e.g., "handlers" or "pkg/auth")
   - Test function name (e.g., "TestUserLogin" or just "UserLogin")
+  - Omit target to test current directory
 
 Examples:
+  gtest                       # Run all tests in current directory
   gtest handlers              # Run all tests in handlers packages recursively
   gtest TestUserLogin         # Run specific test by name
   gtest UserLogin             # Match test containing "UserLogin"
   gtest pkg/auth -v           # Run auth tests with verbose output
-  gtest handlers --exact TestUserCreate  # Exact test name match
+  gtest -raw TestFoo          # Use plain go test output (no tparse/richgo)
 
 Flags:
+  -raw, --raw                 # Use plain go test (disable tparse/richgo)
   --exact                     # Exact test name match (not substring)
   -h, --help                  # Show this help message
+
+Output Formatting:
+  By default, uses tparse if available, falls back to richgo, then plain go.
+  Use -raw to force plain go test output.
 EOF
 }
 
@@ -31,14 +38,29 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     exit 0
 fi
 
+# Check for -raw flag to disable output parsing
+USE_RAW=false
+if [[ "$1" == "-raw" || "$1" == "--raw" ]]; then
+    USE_RAW=true
+    shift
+fi
+
 # Validate we're in a Go project
 if [ ! -f "go.mod" ]; then
     echo -e "${Red}Error: Not in a Go module (go.mod not found)${Color_Off}"
     exit 1
 fi
 
-# Use richgo if available
-[[ -x "$(which richgo)" ]] && BIN='richgo' || BIN='go'
+# Determine test runner: prefer tparse, fallback to richgo, then plain go
+USE_TPARSE=false
+if [[ "$USE_RAW" == false ]] && [[ -x "$(which tparse)" ]]; then
+    BIN='go'
+    USE_TPARSE=true
+elif [[ "$USE_RAW" == false ]] && [[ -x "$(which richgo)" ]]; then
+    BIN='richgo'
+else
+    BIN='go'
+fi
 
 # Ensure ripgrep installed
 if ! [ -x "$(which rg)" ]; then
@@ -142,5 +164,11 @@ else
     fi
 fi
 
-echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
-eval "$CMD"
+if [[ "$USE_TPARSE" == true ]]; then
+    # tparse requires -json flag and output piped to it
+    echo -e "${Green}Running Cmd:\n    ${CMD} -json | tparse -all${Color_Off}\n"
+    eval "${CMD} -json | tparse -all"
+else
+    echo -e "${Green}Running Cmd:\n    ${CMD}${Color_Off}\n"
+    eval "$CMD"
+fi
