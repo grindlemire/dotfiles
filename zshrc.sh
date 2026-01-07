@@ -184,6 +184,16 @@ grollback() {
 gpr() {
     fixssh > /dev/null 2>&1
 
+    local create_pr=false
+    local target_branch=""
+
+    # Parse arguments
+    if [ "$1" = "-push" ]; then
+        create_pr=true
+        shift
+        target_branch="${1:-main}"
+    fi
+
     local current_branch=$(gbranch)
     if [ -z "$current_branch" ]; then
         echo -e "${Red}Error: Not in a git repository${Color_Off}"
@@ -194,7 +204,7 @@ gpr() {
     echo -e "${Green}Fetching latest main branch...${Color_Off}"
     git fetch origin main --quiet 2>/dev/null || git fetch origin master --quiet 2>/dev/null
 
-    # Determine main branch name (main or master)
+    # Determine main branch name (main or master) - use for diff generation
     local main_branch="main"
     if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
         if git rev-parse --verify origin/master >/dev/null 2>&1; then
@@ -203,6 +213,11 @@ gpr() {
             echo -e "${Red}Error: Could not find main or master branch${Color_Off}"
             return 1
         fi
+    fi
+
+    # If -push was specified but no target given, use the detected main branch
+    if [ "$create_pr" = true ] && [ -z "$target_branch" ]; then
+        target_branch="$main_branch"
     fi
 
     # Get diff between current branch and main
@@ -269,12 +284,63 @@ Now analyze these changes:" 2>/dev/null)
         pr_description="## Changes\n$(echo "$commit_log" | sed 's/^/- /')"
     fi
 
-    # Output in copyable format
-    echo -e "\n${Green}=== PR Title ===${Color_Off}"
-    echo "$pr_title"
-    echo -e "\n${Green}=== PR Description ===${Color_Off}"
-    echo "$pr_description"
-    echo ""
+    # If -push was specified, create or update the PR
+    if [ "$create_pr" = true ]; then
+        # Check if PR already exists for current branch
+        echo -e "${Green}Checking for existing PR...${Color_Off}"
+        local existing_pr=$(gh pr list --head "$current_branch" --json number --jq '.[0].number' 2>/dev/null)
+
+        if [ -n "$existing_pr" ]; then
+            # Update existing PR
+            echo -e "${Green}Updating existing PR #${existing_pr}...${Color_Off}"
+
+            # Create temp file for description
+            local desc_file=$(mktemp)
+            echo "$pr_description" > "$desc_file"
+
+            gh pr edit "$existing_pr" --title "$pr_title" --body-file "$desc_file"
+            local edit_exit=$?
+            rm -f "$desc_file"
+
+            if [ $edit_exit -eq 0 ]; then
+                echo -e "${Green}Successfully updated PR #${existing_pr}${Color_Off}"
+                gh pr view "$existing_pr" --web
+            else
+                echo -e "${Red}Failed to update PR${Color_Off}"
+                return 1
+            fi
+        else
+            # Create new PR
+            echo -e "${Green}Creating new PR targeting ${target_branch}...${Color_Off}"
+
+            # Push current branch to remote
+            git push -u origin "$current_branch" 2>&1
+            if [ $? -ne 0 ]; then
+                echo -e "${Red}Failed to push branch${Color_Off}"
+                return 1
+            fi
+
+            # Create temp file for description
+            local desc_file=$(mktemp)
+            echo "$pr_description" > "$desc_file"
+
+            gh pr create --base "$target_branch" --title "$pr_title" --body-file "$desc_file" --web
+            local create_exit=$?
+            rm -f "$desc_file"
+
+            if [ $create_exit -ne 0 ]; then
+                echo -e "${Red}Failed to create PR${Color_Off}"
+                return 1
+            fi
+        fi
+    else
+        # Output in copyable format
+        echo -e "\n${Green}=== PR Title ===${Color_Off}"
+        echo "$pr_title"
+        echo -e "\n${Green}=== PR Description ===${Color_Off}"
+        echo "$pr_description"
+        echo ""
+    fi
 }
 
 gs() {
