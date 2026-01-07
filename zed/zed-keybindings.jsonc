@@ -52,14 +52,17 @@
       "ctrl-k": "pane::ActivateNextItem",
       "cmd-j": "pane::AlternateFile",
       "cmd-h": "pane::TogglePinTab",
-      "shift-cmd-k": "workspace::ToggleRightDock",
+      "cmd-e": "workspace::ToggleRightDock",
     },
   },
   // Support ctrl-r in the terminal
   {
     "context": "Terminal",
     "bindings": {
-      "ctrl-r": ["terminal::SendKeystroke", "ctrl-r"],
+      "ctrl-r": [
+        "terminal::SendKeystroke",
+        "ctrl-r"
+      ],
     },
   },
   // default to tab when accepting edit prediction from the AI
