@@ -109,8 +109,14 @@ fixssh() {
 	. ensure-ssh-agent
 }
 
-gbranch() {
+rawbranch() {
     local branch=$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')
+    [[ -z "$branch" ]] && return
+    printf "%s" "$branch"
+}
+
+gbranch() {
+    local branch=$(rawbranch)
     [[ -z "$branch" ]] && return
     # Add worktree indicator if in a worktree
     if [[ "$PWD" == *"/.worktrees/"* ]]; then
@@ -133,7 +139,7 @@ gproject() {
 
 # alias git pull and git push from the current branch
 gpull() {
-    BRANCH=$(gbranch)
+    BRANCH=$(rawbranch)
     if [ -n "$1" ]; then
         BRANCH=$1
     fi
@@ -144,7 +150,7 @@ gpull() {
 }
 
 gpush() {
-    BRANCH=$(gbranch)
+    BRANCH=$(rawbranch)
     if [ -n "$1" ]; then
         BRANCH=$1
     fi
