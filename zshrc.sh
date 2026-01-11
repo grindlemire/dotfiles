@@ -416,6 +416,7 @@ zle -N down-line-or-beginning-search
 bindkey "^[[A" up-line-or-beginning-search # Up
 bindkey "^[[B" down-line-or-beginning-search # Down
 # cmd line completion
+fpath=(~/dotfiles/completions $fpath)
 autoload -U compinit && compinit
 zstyle ':completion:*' menu select
 # batch rename

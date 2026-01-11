@@ -1,0 +1,8 @@
+#compdef wtl
+
+_wtl() {
+    _arguments \
+        '(-v --verbose)'{-v,--verbose}'[Show full paths, commit messages, and ahead/behind status]'
+}
+
+_wtl "$@"
