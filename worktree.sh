@@ -42,6 +42,148 @@ _wt_lookup_path() {
     '
 }
 
+_wt_skip_patterns() {
+    local repo_root="$1"
+
+    # Default directories to skip (build artifacts, dependencies, caches)
+    local defaults=(
+        'node_modules'
+        'vendor'
+        '.venv'
+        'venv'
+        '__pycache__'
+        '.pytest_cache'
+        'dist'
+        'build'
+        'target'
+        '.next'
+        '.nuxt'
+        '.output'
+        '.cache'
+        '.parcel-cache'
+        '.turbo'
+        'coverage'
+        '.nyc_output'
+        '*.log'
+        '.DS_Store'
+        '.worktrees'
+    )
+
+    # Add patterns from .wtignore if it exists
+    local wtignore="${repo_root}/.wtignore"
+    if [[ -f "$wtignore" ]]; then
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            # Skip comments and empty lines
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "${line// }" ]] && continue
+            defaults+=("$line")
+        done < "$wtignore"
+    fi
+
+    # Output patterns
+    printf '%s\n' "${defaults[@]}"
+}
+
+_wt_build_exclude_pattern() {
+    local repo_root="$1"
+    local patterns
+    patterns=$(_wt_skip_patterns "$repo_root")
+
+    local exclude_pattern=""
+    while IFS= read -r p; do
+        # Convert glob pattern to regex: escape dots, convert * to .*
+        p="${p//./\\.}"
+        p="${p//\*/.*}"
+        [[ -n "$exclude_pattern" ]] && exclude_pattern="${exclude_pattern}|"
+        exclude_pattern="${exclude_pattern}${p}"
+    done <<< "$patterns"
+
+    printf '%s' "$exclude_pattern"
+}
+
+_wt_sync_ignored() {
+    local src_root="$1"
+    local dest_root="$2"
+
+    local exclude_pattern
+    exclude_pattern=$(_wt_build_exclude_pattern "$src_root")
+
+    # Get ignored files from source, excluding skip patterns
+    local ignored_files
+    ignored_files=$(git -C "$src_root" ls-files --others --ignored --exclude-standard 2>/dev/null | grep -v -E "^(${exclude_pattern})(/|$)" | grep -v -E "/(${exclude_pattern})(/|$)")
+
+    [[ -z "$ignored_files" ]] && return 0
+
+    local count=0
+    while IFS= read -r file; do
+        local src_file="${src_root}/${file}"
+        local dest_file="${dest_root}/${file}"
+
+        # Skip if source doesn't exist or dest already exists
+        [[ ! -e "$src_file" ]] && continue
+        [[ -e "$dest_file" ]] && continue
+
+        # Create parent directory if needed
+        local dest_dir=$(dirname "$dest_file")
+        [[ ! -d "$dest_dir" ]] && mkdir -p "$dest_dir"
+
+        # Symlink the file
+        ln -s "$src_file" "$dest_file" && ((count++))
+    done <<< "$ignored_files"
+
+    if [[ $count -gt 0 ]]; then
+        printf '\033[0;32m✓ Symlinked %d ignored file(s) from main worktree\033[0m\n' "$count"
+    fi
+}
+
+_wt_list_symlinks() {
+    local wt_path="$1"
+
+    # Find symlinks in the worktree (excluding .git)
+    local symlinks
+    symlinks=$(find "$wt_path" -type l ! -path '*/.git/*' 2>/dev/null)
+
+    [[ -z "$symlinks" ]] && return 0
+
+    while IFS= read -r link; do
+        local relative="${link#$wt_path/}"
+        local target=$(readlink "$link")
+        printf '      \033[0;36m%s\033[0m → \033[2m%s\033[0m\n' "$relative" "$target"
+    done <<< "$symlinks"
+}
+
+_wt_is_merged() {
+    local branch="$1"
+    local upstream="$2"
+
+    # Try main, then master if not specified
+    if [[ -z "$upstream" ]]; then
+        if git show-ref --verify --quiet refs/heads/main; then
+            upstream="main"
+        elif git show-ref --verify --quiet refs/heads/master; then
+            upstream="master"
+        else
+            return 1
+        fi
+    fi
+
+    # Method 1: Direct ancestor check (handles regular merges)
+    if git merge-base --is-ancestor "$branch" "$upstream" 2>/dev/null; then
+        return 0
+    fi
+
+    # Method 2: Check for squash merge by comparing trees
+    local merge_base branch_tree temp_commit cherry_result
+
+    merge_base=$(git merge-base "$upstream" "$branch" 2>/dev/null) || return 1
+    branch_tree=$(git rev-parse "${branch}^{tree}" 2>/dev/null) || return 1
+    temp_commit=$(git commit-tree "$branch_tree" -p "$merge_base" -m "_" 2>/dev/null) || return 1
+
+    # If cherry says "-", the changes are already applied to upstream
+    cherry_result=$(git cherry "$upstream" "$temp_commit" 2>/dev/null)
+    [[ "$cherry_result" == "-"* ]]
+}
+
 wtc() {
     _wt_require_repo wtc || return 1
 
@@ -60,6 +202,7 @@ wtc() {
     local worktree_path="$existing_path"
 
     # No existing worktree, create a new one
+    local created_new=0
     if [ -z "$worktree_path" ]; then
         local default_parent
         default_parent=$(_wt_default_dir) || return 1
@@ -79,6 +222,14 @@ wtc() {
         else
             git worktree add -b "$branch" "$worktree_path" || return 1
         fi
+        created_new=1
+    fi
+
+    # Sync ignored files from main worktree to new worktree
+    if [[ $created_new -eq 1 ]]; then
+        local main_worktree
+        main_worktree=$(_wt_repo_root)
+        _wt_sync_ignored "$main_worktree" "$worktree_path"
     fi
 
     # Execute based on command presence
@@ -128,6 +279,32 @@ wtd() {
         return 1
     fi
 
+    # Get the branch name for this worktree
+    local branch_name
+    branch_name=$(git worktree list --porcelain | awk -v path="$worktree_path" '
+        BEGIN { RS=""; FS="\n" }
+        {
+            wt_path=""; branch="";
+            for (i=1; i<=NF; i++) {
+                if ($i ~ /^worktree /) wt_path=substr($i,10)
+                else if ($i ~ /^branch /) {
+                    branch=substr($i,8)
+                    sub(/^refs\/heads\//, "", branch)
+                }
+            }
+            if (wt_path == path) { print branch; exit }
+        }
+    ')
+
+    # Check if branch is merged (unless force flag is set)
+    if [[ "$force_flag" -eq 0 && -n "$branch_name" ]]; then
+        if ! _wt_is_merged "$branch_name"; then
+            printf '\033[0;31mwtd: branch "%s" is not merged into main\033[0m\n' "$branch_name" >&2
+            echo "use -f to force deletion" >&2
+            return 1
+        fi
+    fi
+
     # If we're currently in the worktree or a subdirectory of it, cd to repo root
     if [ -n "$worktree_path" ] && [ -d "$worktree_path" ]; then
         local current_pwd="$(pwd)"
@@ -152,9 +329,10 @@ wtl() {
     _wt_require_repo wtl || return 1
 
     local verbose=0
-    if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
-        verbose=1
-    fi
+    case "$1" in
+        -vv) verbose=2 ;;
+        -v|--verbose) verbose=1 ;;
+    esac
 
     # Colors
     local c_reset='\033[0m'
@@ -162,6 +340,7 @@ wtl() {
     local c_yellow='\033[0;33m'
     local c_red='\033[0;31m'
     local c_blue='\033[0;34m'
+    local c_cyan='\033[0;36m'
     local c_dim='\033[2m'
     local c_bold='\033[1m'
 
@@ -201,30 +380,30 @@ wtl() {
     (( max_branch < 10 )) && max_branch=10
 
     # Print each worktree
+    local wt_path wt_head wt_branch short_hash is_current display_name
+    local dirty_count status_str status_color indicator branch_color
+    local subject upstream ahead_behind counts behind ahead symlinks relative
+    local symlink_count
+
     for i in {1..${#paths[@]}}; do
-        local idx=$((i-1))
-        local wt_path="${paths[$i]}"
-        local wt_head="${heads[$i]}"
-        local wt_branch="${branches[$i]}"
-        local short_hash="${wt_head:0:7}"
+        wt_path="${paths[$i]}"
+        wt_head="${heads[$i]}"
+        wt_branch="${branches[$i]}"
+        short_hash="${wt_head:0:7}"
 
         # Check if this is current worktree
-        local is_current=0
+        is_current=0
         [[ "$current_path" == "$wt_path" || "$current_path" == "$wt_path"/* ]] && is_current=1
 
         # Determine display name (short path)
-        local display_name
         if [[ "$wt_path" == "$repo_root" ]]; then
             display_name="(main)"
         else
-            display_name=$(basename "$wt_path")
+            display_name="$(basename "$wt_path")"
         fi
 
         # Get dirty status
-        local dirty_count
         dirty_count=$(git -C "$wt_path" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-        local status_str
-        local status_color
         if [[ "$dirty_count" -gt 0 ]]; then
             status_str="${dirty_count} modified"
             status_color="$c_red"
@@ -233,35 +412,45 @@ wtl() {
             status_color="$c_green"
         fi
 
+        # Count symlinks (exclude .worktrees directory from main worktree only)
+        if [[ "$wt_path" != *"/.worktrees/"* ]]; then
+            # Main worktree - exclude .worktrees subdirectory
+            symlink_count=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null | wc -l | tr -d ' ')
+        else
+            # Inside a worktree - show all symlinks
+            symlink_count=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' 2>/dev/null | wc -l | tr -d ' ')
+        fi
+
         # Current indicator
-        local indicator=" "
+        indicator=" "
         [[ $is_current -eq 1 ]] && indicator="*"
 
         # Branch color
-        local branch_color="$c_yellow"
+        branch_color="$c_yellow"
         [[ "$wt_branch" == "main" || "$wt_branch" == "master" ]] && branch_color="$c_green"
         [[ "$wt_branch" == "(detached)" ]] && branch_color="$c_red"
 
         # Print main line
-        printf "${c_bold}%s${c_reset} ${branch_color}%-${max_branch}s${c_reset}  ${c_dim}%s${c_reset}  ${status_color}%s${c_reset}" \
+        printf "${c_bold}%s${c_reset} ${branch_color}%-${max_branch}s${c_reset}  ${c_dim}%s${c_reset}  ${status_color}%-12s${c_reset}" \
             "$indicator" "$wt_branch" "$short_hash" "$status_str"
+        if [[ "$symlink_count" -gt 0 ]]; then
+            printf "  ${c_cyan}%s symlinked${c_reset}" "$symlink_count"
+        fi
 
-        if [[ $verbose -eq 1 ]]; then
+        if [[ $verbose -ge 1 ]]; then
             # Get commit subject
-            local subject
             subject=$(git -C "$wt_path" log -1 --format='%s' 2>/dev/null | cut -c1-50)
             [[ ${#subject} -eq 50 ]] && subject="${subject}..."
 
             # Get ahead/behind vs main/master
-            local upstream="main"
+            upstream="main"
             git show-ref --verify --quiet refs/heads/master && upstream="master"
-            local ahead_behind=""
+            ahead_behind=""
             if [[ "$wt_branch" != "$upstream" && "$wt_branch" != "(detached)" ]]; then
-                local counts
                 counts=$(git -C "$wt_path" rev-list --left-right --count "${upstream}...${wt_branch}" 2>/dev/null)
                 if [[ -n "$counts" ]]; then
-                    local behind=$(echo "$counts" | cut -f1)
-                    local ahead=$(echo "$counts" | cut -f2)
+                    behind=$(echo "$counts" | cut -f1)
+                    ahead=$(echo "$counts" | cut -f2)
                     [[ "$ahead" -gt 0 ]] && ahead_behind="${c_green}↑${ahead}${c_reset}"
                     [[ "$behind" -gt 0 ]] && ahead_behind="${ahead_behind}${c_red}↓${behind}${c_reset}"
                 fi
@@ -270,9 +459,66 @@ wtl() {
             printf "\n    ${c_dim}%s${c_reset}" "$wt_path"
             [[ -n "$subject" ]] && printf "\n    ${c_blue}%s${c_reset}" "$subject"
             [[ -n "$ahead_behind" ]] && printf "  %b" "$ahead_behind"
+
+            # Show symlinks in -vv mode
+            if [[ $verbose -ge 2 ]]; then
+                if [[ "$wt_path" != *"/.worktrees/"* ]]; then
+                    # Main worktree - exclude .worktrees subdirectory
+                    symlinks=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null)
+                else
+                    # Inside a worktree - show all symlinks
+                    symlinks=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' 2>/dev/null)
+                fi
+                if [[ -n "$symlinks" ]]; then
+                    printf "\n    ${c_dim}symlinks:${c_reset}"
+                    while IFS= read -r link; do
+                        relative="${link#$wt_path/}"
+                        printf "\n      ${c_cyan}%s${c_reset}" "$relative"
+                    done <<< "$symlinks"
+                fi
+            fi
             printf "\n"
         else
             printf "\n"
         fi
     done
+}
+
+wt() {
+    local cmd="${1:-list}"
+    shift 2>/dev/null
+
+    case "$cmd" in
+        c|create)
+            wtc "$@"
+            ;;
+        d|delete|rm|remove)
+            wtd "$@"
+            ;;
+        l|list|ls)
+            wtl "$@"
+            ;;
+        -v|-vv)
+            # Allow wt -v or wt -vv as shorthand for wt list -v/-vv
+            wtl "$cmd" "$@"
+            ;;
+        -h|--help|help)
+            echo "usage: wt <command> [args]"
+            echo ""
+            echo "commands:"
+            echo "  list, ls, l      List worktrees (default)"
+            echo "  create, c        Create/switch to worktree"
+            echo "  delete, rm, d    Delete worktree"
+            echo ""
+            echo "examples:"
+            echo "  wt               List all worktrees"
+            echo "  wt -v            List with details"
+            echo "  wt c feature-x   Create and cd to feature-x worktree"
+            echo "  wt d feature-x   Delete feature-x worktree"
+            ;;
+        *)
+            # Assume it's a branch name for create
+            wtc "$cmd" "$@"
+            ;;
+    esac
 }

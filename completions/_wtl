@@ -2,7 +2,8 @@
 
 _wtl() {
     _arguments \
-        '(-v --verbose)'{-v,--verbose}'[Show full paths, commit messages, and ahead/behind status]'
+        '(-v --verbose -vv)'{-v,--verbose}'[Show full paths, commit messages, and ahead/behind status]' \
+        '(-v --verbose -vv)-vv[Verbose plus symlinked files]'
 }
 
 _wtl "$@"

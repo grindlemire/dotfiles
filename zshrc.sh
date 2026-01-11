@@ -110,7 +110,25 @@ fixssh() {
 }
 
 gbranch() {
-        printf "%s" "$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')"
+    local branch=$(git branch 2>/dev/null | grep \* | awk -F '\\* ' '{$0=$2}1')
+    [[ -z "$branch" ]] && return
+    # Add worktree indicator if in a worktree
+    if [[ "$PWD" == *"/.worktrees/"* ]]; then
+        printf "wt:%s" "$branch"
+    else
+        printf "%s" "$branch"
+    fi
+}
+
+gproject() {
+    local cwd="$PWD"
+    if [[ "$cwd" == *"/.worktrees/"* ]]; then
+        # In a worktree - extract project name (directory containing .worktrees)
+        printf "%s" "$(echo "$cwd" | sed 's|/.worktrees/.*||' | xargs basename)"
+    else
+        # Not in worktree - show current directory
+        printf "%s" "${PWD##*/}"
+    fi
 }
 
 # alias git pull and git push from the current branch
@@ -397,7 +415,7 @@ grelease() {
 
 setopt PROMPT_SUBST
 # prompt
-PROMPT='%(?^%F{green}[%n@%m] [%1~] [$(gbranch)]%f^%F{red}[%n@%m] [%1~] [$(gbranch)]%f)$ '
+PROMPT='%(?^%F{green}[%n@%m] [$(gproject)] [$(gbranch)]%f^%F{red}[%n@%m] [$(gproject)] [$(gbranch)]%f)$ '
 
 # in-place delete
 bindkey '^[[3~'  delete-char

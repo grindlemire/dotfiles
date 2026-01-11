@@ -1,0 +1,78 @@
+#compdef wt
+
+_wt() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->command' \
+        '*: :->args' \
+        && return 0
+
+    case $state in
+        command)
+            local -a commands
+            commands=(
+                'list:List worktrees'
+                'ls:List worktrees'
+                'l:List worktrees'
+                'create:Create/switch to worktree'
+                'c:Create/switch to worktree'
+                'delete:Delete worktree'
+                'rm:Delete worktree'
+                'd:Delete worktree'
+                'help:Show help'
+                '-v:List with details'
+                '-vv:List with details and symlinks'
+            )
+            _describe -t commands 'command' commands
+
+            # Also complete branch names for direct create
+            local -a branches
+            branches=(${(f)"$(git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null)"})
+            _describe -t branches 'branch' branches
+            ;;
+        args)
+            case "${words[2]}" in
+                c|create)
+                    # Complete branches for create
+                    local -a branches worktrees
+                    worktrees=(${(f)"$(git worktree list --porcelain 2>/dev/null | awk '/^branch / {sub(/^refs\/heads\//, "", $2); print $2}')"})
+                    branches=(${(f)"$(git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null)"})
+                    local -a all_branches
+                    all_branches=("${(@u)worktrees}" "${(@u)branches}")
+                    _describe -t branches 'branch' all_branches
+                    _message 'branch name (existing or new)'
+                    ;;
+                d|delete|rm|remove)
+                    # Complete existing worktrees for delete
+                    local -a worktrees
+                    worktrees=(${(f)"$(git worktree list --porcelain 2>/dev/null | awk '
+                        BEGIN { RS=""; FS="\n" }
+                        {
+                            path=""; branch="";
+                            for (i=1; i<=NF; i++) {
+                                if ($i ~ /^worktree /) path=substr($i,10)
+                                else if ($i ~ /^branch /) {
+                                    branch=substr($i,8)
+                                    sub(/^refs\/heads\//, "", branch)
+                                }
+                            }
+                            if (path ~ /\.worktrees/ && branch != "") print branch
+                        }
+                    ')"})
+                    if (( ${#worktrees} > 0 )); then
+                        _describe -t worktrees 'worktree' worktrees
+                    fi
+                    ;;
+                l|list|ls|-v|-vv)
+                    _arguments \
+                        '(-v --verbose -vv)'{-v,--verbose}'[Show details]' \
+                        '(-v --verbose -vv)-vv[Show details and symlinks]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_wt "$@"
