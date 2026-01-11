@@ -156,9 +156,13 @@ _wt_is_merged() {
     local branch="$1"
     local upstream="$2"
 
-    # Try main, then master if not specified
+    # Try remote main/master first, fall back to local if not specified
     if [[ -z "$upstream" ]]; then
-        if git show-ref --verify --quiet refs/heads/main; then
+        if git show-ref --verify --quiet refs/remotes/origin/main; then
+            upstream="origin/main"
+        elif git show-ref --verify --quiet refs/remotes/origin/master; then
+            upstream="origin/master"
+        elif git show-ref --verify --quiet refs/heads/main; then
             upstream="main"
         elif git show-ref --verify --quiet refs/heads/master; then
             upstream="master"
