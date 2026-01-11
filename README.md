@@ -62,9 +62,20 @@ ln -s ~/dotfiles/zshrc.sh ~/.zshrc
 
 ### Git Worktree Management
 
-- `wtc <branch> [path]` - Create new worktree
-- `wtd [-f] <branch|path>` - Delete worktree
-- `wtl` - List all worktrees
+- `wt` - Unified worktree command (or use individual commands below)
+- `wtc <branch>` - Create/switch to worktree (symlinks gitignored files automatically)
+- `wtd [-f] [branch|path]` - Delete worktree (defaults to current, `-f` to force unmerged)
+- `wtl [-v|-vv]` - List worktrees (`-v` for details, `-vv` to show symlinks)
+- `cc [branch]` - Create worktree and launch Claude Code in it
+
+**Symlink sync**: When creating a worktree, gitignored files (e.g., `.env`) are symlinked from the main worktree. Build artifacts like `node_modules`, `vendor`, `dist`, etc. are excluded by default.
+
+**Custom exclusions**: Create `.wtignore` in repo root with patterns to exclude from symlinking:
+```
+# One pattern per line, supports globs
+*.log
+my-large-cache/
+```
 
 ### Shell Enhancement
 

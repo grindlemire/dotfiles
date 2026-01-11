@@ -496,7 +496,7 @@ cc() {
     local yolo_flag=""
     case "$1" in
         -y|--yolo)
-            yolo_flag="--dangerously-skip-permissions"
+            yolo_flag="--allowlist-dangerously-skip-permissions"
             shift
             ;;
     esac
@@ -559,6 +559,14 @@ wt() {
             echo "  wt c feature-x   Create and cd to feature-x worktree"
             echo "  wt d feature-x   Delete feature-x worktree"
             echo "  wt d             Delete current worktree"
+            echo ""
+            echo "symlink sync:"
+            echo "  When creating a worktree, gitignored files from the main worktree are"
+            echo "  automatically symlinked (e.g., .env, config files). Build artifacts and"
+            echo "  dependencies are excluded by default (node_modules, vendor, dist, etc.)."
+            echo ""
+            echo "  Create .wtignore in repo root to add custom exclusions (one pattern per"
+            echo "  line, supports globs like *.log, lines starting with # are comments)."
             ;;
         *)
             # Assume it's a branch name for create
