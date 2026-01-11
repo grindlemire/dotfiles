@@ -156,7 +156,7 @@ gcommit() {
         gadd
         NEED_GADD=false
         echo -e "${Green}Generating commit message...${Color_Off}"
-        MSG=$(git diff --cached --diff-algorithm=minimal | claude -p "Generate a concise git commit message (subject line only, no body, max 72 chars) for these changes. Output ONLY the message, nothing else." 2>/dev/null)
+        MSG=$(git diff --cached --diff-algorithm=minimal | claude -p "Generate a concise git commit message (subject line only, no body, max 72 chars) for these changes. OUTPUT ONLY THE MESSAGE, NOTHING ELSE." 2>/dev/null)
         CLAUDE_EXIT=$?
         if [ -z "$MSG" ] || [ $CLAUDE_EXIT -ne 0 ]; then
             MSG="snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -231,28 +231,29 @@ killport() {
 }
 
 # universal archive extractor
-extract() {
-    if [ -z "$1" ]; then
-        echo "usage: extract <archive>"
-        return 1
+extract () {
+    if [ -z "$1" ]
+    then
+            echo "usage: extract <archive>"
+            return 1
     fi
-
-    if [ -f "$1" ]; then
+    if [ -f "$1" ]
+    then
         case "$1" in
-            *.tar.bz2)   tar xjf "$1"     ;;
-            *.tar.gz)    tar xzf "$1"     ;;
-            *.bz2)       bunzip2 "$1"     ;;
-            *.rar)       unrar x "$1"     ;;
-            *.gz)        gunzip "$1"      ;;
-            *.tar)       tar xf "$1"      ;;
-            *.tbz2)      tar xjf "$1"     ;;
-            *.tgz)       tar xzf "$1"     ;;
-            *.zip)       unzip "$1"       ;;
-            *.Z)         uncompress "$1"  ;;
-            *.7z)        7z x "$1"        ;;
-            *.tar.xz)    tar xf "$1"      ;;
-            *.xz)        xz -d "$1"       ;;
-            *)           echo "'$1' cannot be extracted via extract()" ;;
+            (*.tar.bz2) tar xjf "$1" ;;
+            (*.tar.gz) tar xzf "$1" ;;
+            (*.bz2) bunzip2 -k "$1" ;;
+            (*.rar) unrar x "$1" ;;
+            (*.gz) gunzip -k "$1" ;;
+            (*.tar) tar xf "$1" ;;
+            (*.tbz2) tar xjf "$1" ;;
+            (*.tgz) tar xzf "$1" ;;
+            (*.zip) unzip "$1" ;;
+            (*.Z) gzip -dk "$1" ;;
+            (*.7z) 7z x "$1" ;;
+            (*.tar.xz) tar xf "$1" ;;
+            (*.xz) xz -dk "$1" ;;
+            (*) echo "'$1' cannot be extracted via extract()" ;;
         esac
     else
         echo "'$1' is not a valid file"
