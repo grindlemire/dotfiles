@@ -1,0 +1,29 @@
+#compdef cc
+
+_cc() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '(-y --yolo)'{-y,--yolo}'[Enable dangerously-skip-permissions mode]' \
+        '1: :->branch' \
+        && return 0
+
+    case $state in
+        branch)
+            local -a branches worktrees
+            # Get existing worktree branches
+            worktrees=(${(f)"$(git worktree list --porcelain 2>/dev/null | awk '/^branch / {sub(/^refs\/heads\//, "", $2); print $2}')"})
+            # Get all local branches
+            branches=(${(f)"$(git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null)"})
+            # Combine and dedupe
+            local -a all_branches
+            all_branches=("${(@u)worktrees}" "${(@u)branches}")
+            _describe -t branches 'branch' all_branches && return 0
+            # Also allow new branch names
+            _message 'branch name (existing or new, empty for main)'
+            ;;
+    esac
+}
+
+_cc "$@"

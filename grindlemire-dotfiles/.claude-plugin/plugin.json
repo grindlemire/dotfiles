@@ -1,0 +1,8 @@
+{
+  "name": "grindlemire-dotfiles",
+  "description": "Skills for working with grindlemire's dotfiles - git aliases and worktree management",
+  "version": "1.0.0",
+  "author": {
+    "name": "grindlemire"
+  }
+}

@@ -251,12 +251,12 @@ wtd() {
             ;;
     esac
 
-    if [ -z "$1" ]; then
-        echo "usage: wtd [-f|--force] <path-or-branch>" >&2
-        return 1
-    fi
-
     local target="$1"
+
+    # Default to current worktree if no target specified
+    if [ -z "$target" ]; then
+        target=$(pwd)
+    fi
     local worktree_path=""
 
     if [ -d "$target" ]; then
@@ -295,6 +295,12 @@ wtd() {
             if (wt_path == path) { print branch; exit }
         }
     ')
+
+    # Never delete main or master
+    if [[ "$branch_name" == "main" || "$branch_name" == "master" ]]; then
+        printf '\033[0;31mwtd: refusing to delete %s worktree\033[0m\n' "$branch_name" >&2
+        return 1
+    fi
 
     # Check if branch is merged (unless force flag is set)
     if [[ "$force_flag" -eq 0 && -n "$branch_name" ]]; then
@@ -484,6 +490,43 @@ wtl() {
     done
 }
 
+cc() {
+    _wt_require_repo cc || return 1
+
+    local yolo_flag=""
+    case "$1" in
+        -y|--yolo)
+            yolo_flag="--dangerously-skip-permissions"
+            shift
+            ;;
+    esac
+
+    local branch="$1"
+    local target_path
+
+    if [ -z "$branch" ]; then
+        # No branch specified - use main worktree
+        target_path=$(_wt_repo_root)
+    else
+        # Check if worktree exists for this branch
+        target_path=$(_wt_lookup_path "$branch")
+
+        if [ -z "$target_path" ]; then
+            # Create new worktree
+            wtc "$branch" || return 1
+            target_path=$(_wt_lookup_path "$branch")
+        fi
+    fi
+
+    if [ -z "$target_path" ] || [ ! -d "$target_path" ]; then
+        echo "cc: could not determine worktree path" >&2
+        return 1
+    fi
+
+    # Launch claude code in the target directory
+    (cd "$target_path" && claude $yolo_flag)
+}
+
 wt() {
     local cmd="${1:-list}"
     shift 2>/dev/null
@@ -515,6 +558,7 @@ wt() {
             echo "  wt -v            List with details"
             echo "  wt c feature-x   Create and cd to feature-x worktree"
             echo "  wt d feature-x   Delete feature-x worktree"
+            echo "  wt d             Delete current worktree"
             ;;
         *)
             # Assume it's a branch name for create
