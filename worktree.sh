@@ -325,9 +325,15 @@ wtd() {
     fi
 
     if [ "$force_flag" -eq 1 ]; then
-        git worktree remove --force "$worktree_path"
+        git worktree remove --force "$worktree_path" || return 1
     else
-        git worktree remove "$worktree_path"
+        git worktree remove "$worktree_path" || return 1
+    fi
+
+    # Delete the branch if it was merged
+    if [[ -n "$branch_name" ]] && _wt_is_merged "$branch_name"; then
+        git branch -d "$branch_name" 2>/dev/null && \
+            printf '\033[0;32m✓ Deleted branch %s\033[0m\n' "$branch_name"
     fi
 }
 
