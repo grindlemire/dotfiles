@@ -431,10 +431,10 @@ wtl() {
         # Count symlinks (exclude .worktrees directory from main worktree only)
         if [[ "$wt_path" != *"/.worktrees/"* ]]; then
             # Main worktree - exclude .worktrees subdirectory
-            symlink_count=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null | wc -l | tr -d ' ')
+            symlink_count=$(find "$wt_path" -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null | wc -l | tr -d ' ')
         else
             # Inside a worktree - show all symlinks
-            symlink_count=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' 2>/dev/null | wc -l | tr -d ' ')
+            symlink_count=$(find "$wt_path" -type l ! -path '*/.git/*' 2>/dev/null | wc -l | tr -d ' ')
         fi
 
         # Current indicator
@@ -480,10 +480,10 @@ wtl() {
             if [[ $verbose -ge 2 ]]; then
                 if [[ "$wt_path" != *"/.worktrees/"* ]]; then
                     # Main worktree - exclude .worktrees subdirectory
-                    symlinks=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null)
+                    symlinks=$(find "$wt_path" -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null)
                 else
                     # Inside a worktree - show all symlinks
-                    symlinks=$(find "$wt_path" -maxdepth 3 -type l ! -path '*/.git/*' 2>/dev/null)
+                    symlinks=$(find "$wt_path" -type l ! -path '*/.git/*' 2>/dev/null)
                 fi
                 if [[ -n "$symlinks" ]]; then
                     printf "\n    ${c_dim}symlinks:${c_reset}"
