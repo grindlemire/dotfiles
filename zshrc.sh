@@ -6,6 +6,7 @@ alias la='ls -a'   # hidden
 alias ll='ls -lh'  # long
 alias lt='ls -lth' # long time sorted
 alias lla='ls -lha' # long and hidden
+alias less='less -R'
 alias emacs='emacs -nw'
 alias cap='ret=$?'
 alias check='[ $ret == 0 ] && true || false'
