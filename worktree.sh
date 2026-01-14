@@ -541,6 +541,30 @@ wt() {
     local cmd="${1:-list}"
     shift 2>/dev/null
 
+    # Handle case where current directory no longer exists (deleted worktree)
+    # If we're in a .worktrees subdirectory and git doesn't work, cd to main worktree
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        local current_path="$PWD"
+        if [[ "$current_path" == *"/.worktrees/"* ]]; then
+            local main_path="${current_path%%/.worktrees/*}"
+            if [[ -d "$main_path" ]]; then
+                echo "wt: current worktree no longer exists, returning to main worktree" >&2
+                cd "$main_path" || return 1
+                # If user just ran 'wt' or 'wt list', show the list after recovering
+                if [[ "$cmd" == "list" || "$cmd" == "ls" || "$cmd" == "l" ]]; then
+                    wtl "$@"
+                    return $?
+                fi
+            else
+                echo "wt: not inside a git repository" >&2
+                return 1
+            fi
+        else
+            echo "wt: not inside a git repository" >&2
+            return 1
+        fi
+    fi
+
     case "$cmd" in
         c|create)
             wtc "$@"
