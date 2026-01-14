@@ -503,14 +503,6 @@ wtl() {
 cc() {
     _wt_require_repo cc || return 1
 
-    local yolo_flag=""
-    case "$1" in
-        -y|--yolo)
-            yolo_flag="--allowlist-dangerously-skip-permissions"
-            shift
-            ;;
-    esac
-
     local branch="$1"
     local target_path
 
@@ -534,7 +526,7 @@ cc() {
     fi
 
     # Launch claude code in the target directory
-    (cd "$target_path" && claude $yolo_flag)
+    (cd "$target_path" && claude --dangerously-skip-permissions)
 }
 
 wt() {
