@@ -526,7 +526,7 @@ cc() {
     fi
 
     # Launch claude code in the target directory
-    (cd "$target_path" && claude --dangerously-skip-permissions)
+    (cd "$target_path" && claude --allowlist-dangerously-skip-permissions)
 }
 
 wt() {

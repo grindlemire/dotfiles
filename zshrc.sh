@@ -156,6 +156,11 @@ gpush() {
         BRANCH=$1
     fi
 
+    # If there are uncommitted changes, commit first
+    if [ -n "$(git status --porcelain)" ]; then
+        gcommit || return 1
+    fi
+
     CMD="git push origin ${BRANCH}"
     echo -e "${Green} Running Cmd:\n    ${CMD} ${Color_Off}\n"
     eval "$CMD"
