@@ -501,32 +501,29 @@ wtl() {
 }
 
 cc() {
-    _wt_require_repo cc || return 1
+    local yolo=1
+    local query=""
 
-    local branch="$1"
-    local target_path
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s|--safe)
+                yolo=0
+                shift
+                ;;
+            *)
+                # Remaining args are the query
+                query="$*"
+                break
+                ;;
+        esac
+    done
 
-    if [ -z "$branch" ]; then
-        # No branch specified - use main worktree
-        target_path=$(_wt_repo_root)
-    else
-        # Check if worktree exists for this branch
-        target_path=$(_wt_lookup_path "$branch")
+    local cmd="claude"
+    [[ $yolo -eq 1 ]] && cmd="$cmd --dangerously-skip-permissions"
+    [[ -n "$query" ]] && cmd="$cmd \"$query\""
 
-        if [ -z "$target_path" ]; then
-            # Create new worktree
-            wtc "$branch" || return 1
-            target_path=$(_wt_lookup_path "$branch")
-        fi
-    fi
-
-    if [ -z "$target_path" ] || [ ! -d "$target_path" ]; then
-        echo "cc: could not determine worktree path" >&2
-        return 1
-    fi
-
-    # Launch claude code in the target directory
-    (cd "$target_path" && claude --allow-dangerously-skip-permissions)
+    eval "$cmd"
 }
 
 wt() {

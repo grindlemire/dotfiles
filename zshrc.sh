@@ -493,5 +493,94 @@ HOMEBREW_AUTO_UPDATE_SECS=2629746
 
 . "$HOME/.local/bin/env"
 
+# Ralph Wiggum loop - run claude with a prompt file until <promise>COMPLETE</promise> or max iterations
+execute() {
+    local prompt_file="${1:-prompt.md}"
+    local max_iterations="${2:-10}"
+    local iteration=1
+
+    if [ ! -f "$prompt_file" ]; then
+        echo -e "${Red}Error: Prompt file '$prompt_file' not found${Color_Off}"
+        echo "usage: execute [prompt_file] [max_iterations]"
+        echo "  prompt_file: path to prompt file (default: prompt.md)"
+        echo "  max_iterations: max iterations before bailing (default: 10)"
+        return 1
+    fi
+
+    echo -e "${Green}Starting execute loop with '$prompt_file' (max $max_iterations iterations)${Color_Off}"
+
+    while [ $iteration -le $max_iterations ]; do
+        echo -e "\n${Green}━━━ Iteration $iteration/$max_iterations ━━━${Color_Off}\n"
+
+        local tmpfile=$(mktemp)
+        local jsonbuf=$(mktemp)
+        claude -p "$(cat "$prompt_file")" --dangerously-skip-permissions --output-format stream-json --verbose --include-partial-messages 2>&1 | tee "$tmpfile" | while IFS= read -r line; do
+            echo "$line" | jq -rj --unbuffered '
+              if .type == "stream_event" then
+                if .event.type == "content_block_delta" and .event.delta.type == "text_delta" then
+                  .event.delta.text
+                elif .event.type == "content_block_delta" and .event.delta.type == "thinking_delta" then
+                  "\u001b[0;90m\(.event.delta.thinking)\u001b[0m"
+                elif .event.type == "content_block_start" and .event.content_block.type == "tool_use" then
+                  "\n\u001b[0;36m● \(.event.content_block.name)\u001b[0m "
+                elif .event.type == "content_block_start" and .event.content_block.type == "text" then
+                  "\n\n"
+                else empty
+                end
+              else empty
+              end
+            ' 2>/dev/null
+            # Accumulate tool input JSON
+            toolinput=$(echo "$line" | jq -r 'if .type == "stream_event" and .event.type == "content_block_delta" and .event.delta.type == "input_json_delta" then .event.delta.partial_json else empty end' 2>/dev/null)
+            if [[ -n "$toolinput" ]]; then
+                printf "%s" "$toolinput" >> "$jsonbuf"
+            fi
+            # On tool end, show formatted summary
+            if echo "$line" | jq -e '.type == "stream_event" and .event.type == "content_block_stop"' >/dev/null 2>&1; then
+                if [[ -s "$jsonbuf" ]]; then
+                    summary=$(cat "$jsonbuf" | jq -r '
+                      if .file_path then "\u001b[0;90m\(.file_path | split("/") | last)\u001b[0m"
+                      elif .pattern then "\u001b[0;90m\(.pattern)\u001b[0m"
+                      elif .command then "\u001b[0;90m\(.command | if length > 60 then .[0:60] + "..." else . end)\u001b[0m"
+                      elif .todos then "\u001b[0;90m(\(.todos | length) items)\u001b[0m"
+                      elif .query then "\u001b[0;90m\(.query)\u001b[0m"
+                      else empty
+                      end
+                    ' 2>/dev/null)
+                    [[ -n "$summary" ]] && printf "%s" "$summary"
+                    : > "$jsonbuf"
+                fi
+            fi
+        done
+        rm -f "$jsonbuf"
+        local result=$(cat "$tmpfile")
+
+        # Extract token usage from the result message
+        local token_stats=$(cat "$tmpfile" | grep '"type":"result"' | jq -r '
+          def human(n): if n >= 1000000 then "\(n / 1000000 | . * 10 | floor / 10)M"
+                        elif n >= 1000 then "\(n / 1000 | . * 10 | floor / 10)K"
+                        else "\(n)" end;
+          def cost(n): if n > 0 then "$\(n * 100 | floor / 100)" else "$0" end;
+          "Input: \(human(.usage.input_tokens // 0))  Output: \(human(.usage.output_tokens // 0))  Cache ↓\(human(.usage.cache_read_input_tokens // 0)) ↑\(human(.usage.cache_creation_input_tokens // 0))  Cost: \(cost(.total_cost_usd // 0))"
+        ' 2>/dev/null)
+        rm -f "$tmpfile"
+
+        echo -e "\n\033[0;33m${token_stats:-Token stats unavailable}\033[0m"
+
+        # Extract just the text content from the final result, not the entire JSON stream
+        local final_text=$(echo "$result" | grep '"type":"result"' | jq -r '.result // empty' 2>/dev/null)
+        if [[ "$final_text" == *"<promise>COMPLETE</promise>"* ]]; then
+            echo -e "\n${Green}✓ Completed successfully on iteration $iteration${Color_Off}"
+            return 0
+        fi
+
+        echo -e "\n${Red}━━━ End of iteration $iteration ━━━${Color_Off}"
+        iteration=$((iteration + 1))
+    done
+
+    echo -e "\n${Red}✗ Reached max iterations ($max_iterations)${Color_Off}"
+    return 1
+}
+
 # Added by Antigravity
 export PATH="/Users/joelholsteen/.antigravity/antigravity/bin:$PATH"
