@@ -173,7 +173,14 @@ gadd() {
 }
 
 gcommit() {
-    local NEED_GADD=true
+    local NEED_GADD=false
+    local MSG
+    local CLAUDE_EXIT
+
+    # If something is already staged, commit only staged changes.
+    if git diff --cached --quiet --exit-code; then
+        NEED_GADD=true
+    fi
 
     if [ -n "$1" ] && [ "$1" = "-m" ]; then
         # Skip -m and use remaining arguments as message
@@ -183,8 +190,10 @@ gcommit() {
         MSG="$@"
     else
         # Auto-generate using Claude Code
-        gadd
-        NEED_GADD=false
+        if [ "$NEED_GADD" = true ]; then
+            gadd
+            NEED_GADD=false
+        fi
         echo -e "${Green}Generating commit message...${Color_Off}"
         MSG=$(git diff --cached --diff-algorithm=minimal | claude -p "Generate a concise git commit message (subject line only, no body, max 72 chars) for these changes. OUTPUT ONLY THE MESSAGE, NOTHING ELSE." 2>/dev/null)
         CLAUDE_EXIT=$?
@@ -582,5 +591,38 @@ execute() {
     return 1
 }
 
+cc() {
+    local yolo=1
+    local args=()
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s|--safe)
+                yolo=0
+                shift
+                ;;
+            *)
+                # Pass through to claude
+                args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if [[ $yolo -eq 1 ]]; then
+        claude --dangerously-skip-permissions "${args[@]}"
+    else
+        claude "${args[@]}"
+    fi
+}
+
 # Added by Antigravity
 export PATH="/Users/joelholsteen/.antigravity/antigravity/bin:$PATH"
+
+# bun completions
+[ -s "/Users/joelholsteen/.bun/_bun" ] && source "/Users/joelholsteen/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
