@@ -500,32 +500,6 @@ wtl() {
     done
 }
 
-cc() {
-    local yolo=1
-    local query=""
-
-    # Parse arguments
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -s|--safe)
-                yolo=0
-                shift
-                ;;
-            *)
-                # Remaining args are the query
-                query="$*"
-                break
-                ;;
-        esac
-    done
-
-    local cmd="claude"
-    [[ $yolo -eq 1 ]] && cmd="$cmd --dangerously-skip-permissions"
-    [[ -n "$query" ]] && cmd="$cmd \"$query\""
-
-    eval "$cmd"
-}
-
 wt() {
     local cmd="${1:-list}"
     shift 2>/dev/null
