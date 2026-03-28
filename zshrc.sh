@@ -60,20 +60,61 @@ has_param() {
 }
 
 gprune() {
-    CMD='git branch -D $branch'
+    # auto-detect default branch
+    local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+    if [[ -z "$default_branch" ]]; then
+        default_branch=$(git branch -l main master | sed 's/^[* ]*//' | head -1)
+    fi
+    if [[ -z "$default_branch" ]]; then
+        echo "Could not determine default branch"; return 1
+    fi
+
+    local dry=false
     if has_param '--dry' "$@"; then
-        CMD='echo "${Green}$branch ${Color_Off}is merged into main and can be deleted"'
+        dry=true
     else
-        # fetch all the remote branches and remove the deleted branches from autocomplete
         git fetch --prune --all
     fi
 
-    # taken from https://stackoverflow.com/questions/43489303/how-can-i-delete-all-git-branches-which-have-been-squash-and-merge-via-github
-    git checkout -q main && git for-each-ref refs/heads/ "--format=%(refname:short)" | \
-    while read branch;
-        do mergeBase=$(git merge-base main $branch) &&
-        [[ $(git cherry main $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _)) == "-"* ]] &&
-        eval "$CMD";
+    git checkout -q "$default_branch"
+
+    # collect branches that are regular-merged
+    local merged_branches=$(git branch --merged "$default_branch" | sed 's/^[* ]*//' | grep -v "^${default_branch}$")
+
+    git for-each-ref refs/heads/ "--format=%(refname:short)" | while read branch; do
+        [[ "$branch" == "$default_branch" ]] && continue
+        local dominated=false
+
+        # check 1: regular merge (git branch --merged)
+        if echo "$merged_branches" | grep -qx "$branch"; then
+            dominated=true
+        fi
+
+        # check 2: squash merge (commit-tree trick)
+        if ! $dominated; then
+            local mergeBase=$(git merge-base "$default_branch" "$branch" 2>/dev/null)
+            if [[ -n "$mergeBase" ]] && \
+               [[ $(git cherry "$default_branch" $(git commit-tree $(git rev-parse "$branch^{tree}") -p $mergeBase -m _) 2>/dev/null) == "-"* ]]; then
+                dominated=true
+            fi
+        fi
+
+        # check 3: branch's remote was deleted (PR merged and branch cleaned up on remote)
+        if ! $dominated; then
+            local remote_ref=$(git config "branch.${branch}.merge" 2>/dev/null)
+            local remote=$(git config "branch.${branch}.remote" 2>/dev/null)
+            if [[ -n "$remote_ref" && -n "$remote" ]] && ! git rev-parse --verify "${remote}/${branch}" &>/dev/null; then
+                dominated=true
+            fi
+        fi
+
+        if $dominated; then
+            if $dry; then
+                echo "${Green}$branch ${Color_Off}is merged into $default_branch and can be deleted"
+            else
+                git branch -D "$branch"
+            fi
+        fi
     done
     return 0
 }
@@ -611,7 +652,7 @@ cc() {
     done
 
     if [[ $yolo -eq 1 ]]; then
-        claude --dangerously-skip-permissions "${args[@]}"
+        claude --allow-dangerously-skip-permissions "${args[@]}"
     else
         claude "${args[@]}"
     fi
