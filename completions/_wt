@@ -21,6 +21,12 @@ _wt() {
                 'delete:Delete worktree'
                 'rm:Delete worktree'
                 'd:Delete worktree'
+                'sync:Re-sync symlinks from main worktree'
+                's:Re-sync symlinks from main worktree'
+                'prune:Delete all worktrees with merged branches'
+                'p:Delete all worktrees with merged branches'
+                'edit:Open worktree in editor'
+                'e:Open worktree in editor'
                 'help:Show help'
                 '-v:List with details'
                 '-vv:List with details and symlinks'
@@ -59,6 +65,56 @@ _wt() {
                                 }
                             }
                             if (path ~ /\.worktrees/ && branch != "") print branch
+                        }
+                    ')"})
+                    if (( ${#worktrees} > 0 )); then
+                        _describe -t worktrees 'worktree' worktrees
+                    fi
+                    ;;
+                s|sync)
+                    _arguments \
+                        '(-a --all)'{-a,--all}'[Sync all worktrees]'
+
+                    # Complete worktree branch names
+                    local -a worktrees
+                    worktrees=(${(f)"$(git worktree list --porcelain 2>/dev/null | awk '
+                        BEGIN { RS=""; FS="\n" }
+                        {
+                            path=""; branch="";
+                            for (i=1; i<=NF; i++) {
+                                if ($i ~ /^worktree /) path=substr($i,10)
+                                else if ($i ~ /^branch /) {
+                                    branch=substr($i,8)
+                                    sub(/^refs\/heads\//, "", branch)
+                                }
+                            }
+                            if (path ~ /\.worktrees/ && branch != "") print branch
+                        }
+                    ')"})
+                    if (( ${#worktrees} > 0 )); then
+                        _describe -t worktrees 'worktree' worktrees
+                    fi
+                    ;;
+                p|prune)
+                    _arguments \
+                        '(-n --dry-run)'{-n,--dry-run}'[Show what would be pruned]' \
+                        '(-f --force)'{-f,--force}'[Skip confirmation prompt]'
+                    ;;
+                e|edit)
+                    # Complete existing worktrees for edit
+                    local -a worktrees
+                    worktrees=(${(f)"$(git worktree list --porcelain 2>/dev/null | awk '
+                        BEGIN { RS=""; FS="\n" }
+                        {
+                            path=""; branch="";
+                            for (i=1; i<=NF; i++) {
+                                if ($i ~ /^worktree /) path=substr($i,10)
+                                else if ($i ~ /^branch /) {
+                                    branch=substr($i,8)
+                                    sub(/^refs\/heads\//, "", branch)
+                                }
+                            }
+                            if (branch != "") print branch
                         }
                     ')"})
                     if (( ${#worktrees} > 0 )); then

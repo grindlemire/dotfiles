@@ -27,6 +27,10 @@ ln -s ~/dotfiles/zshrc.sh ~/.zshrc
 - **`virtualenv.sh`** - Python virtual environment management
 - **`worktree.sh`** - Git worktree utilities for managing multiple branches
 
+### Claude Code Skills
+
+- **`skills/`** - Personal Claude Code skills. Run `./skills/install.sh` to symlink each skill into `~/.claude/skills/`.
+
 ## Key Features
 
 ### Aliases & Shortcuts

@@ -188,6 +188,287 @@ _wt_is_merged() {
     [[ "$cherry_result" == "-"* ]]
 }
 
+wts() {
+    _wt_require_repo wts || return 1
+
+    local all_flag=0
+    local target=""
+    for arg in "$@"; do
+        case "$arg" in
+            -a|--all) all_flag=1 ;;
+            *) target="$arg" ;;
+        esac
+    done
+
+    local main_worktree
+    main_worktree=$(_wt_repo_root) || return 1
+
+    if [[ $all_flag -eq 1 ]]; then
+        # Sync all non-main worktrees
+        local wt_paths=()
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^worktree\ (.+)$ ]]; then
+                local p="${match[1]}"
+                [[ "$p" != "$main_worktree" ]] && wt_paths+=("$p")
+            fi
+        done < <(git worktree list --porcelain)
+
+        if [[ ${#wt_paths[@]} -eq 0 ]]; then
+            echo "wts: no non-main worktrees found" >&2
+            return 1
+        fi
+
+        for wt_path in "${wt_paths[@]}"; do
+            local branch=$(basename "$wt_path")
+            printf '\033[1m%s\033[0m\n' "$branch"
+            _wt_sync_ignored "$main_worktree" "$wt_path"
+        done
+    else
+        # Sync a single worktree (default: current)
+        local wt_path
+        if [[ -z "$target" ]]; then
+            wt_path=$(pwd)
+        else
+            wt_path=$(_wt_lookup_path "$target")
+            if [[ -z "$wt_path" ]]; then
+                local default_parent
+                default_parent=$(_wt_default_dir) || return 1
+                local candidate="${default_parent}/${target}"
+                [[ -d "$candidate" ]] && wt_path="$candidate"
+            fi
+        fi
+
+        if [[ -z "$wt_path" || ! -d "$wt_path" ]]; then
+            echo "wts: no worktree found for '${target:-$(pwd)}'" >&2
+            return 1
+        fi
+
+        if [[ "$wt_path" == "$main_worktree" ]]; then
+            echo "wts: cannot sync main worktree to itself" >&2
+            return 1
+        fi
+
+        _wt_sync_ignored "$main_worktree" "$wt_path"
+    fi
+}
+
+wtp() {
+    _wt_require_repo wtp || return 1
+
+    local dry_run=0
+    local force_flag=0
+    local include_detached=0
+    for arg in "$@"; do
+        case "$arg" in
+            -n|--dry-run) dry_run=1 ;;
+            -f|--force) force_flag=1 ;;
+            -d|--detached) include_detached=1 ;;
+        esac
+    done
+
+    local main_worktree
+    main_worktree=$(_wt_repo_root) || return 1
+
+    # Resolve upstream once for detached-reachability checks
+    local upstream=""
+    if git show-ref --verify --quiet refs/remotes/origin/main; then
+        upstream="origin/main"
+    elif git show-ref --verify --quiet refs/remotes/origin/master; then
+        upstream="origin/master"
+    elif git show-ref --verify --quiet refs/heads/main; then
+        upstream="main"
+    elif git show-ref --verify --quiet refs/heads/master; then
+        upstream="master"
+    fi
+
+    # Collect worktrees with merged branches
+    local merged_paths=()
+    local merged_branches=()
+
+    # Collect detached worktrees with classification: safe | dirty:N | unreachable
+    local detached_paths=()
+    local detached_heads=()
+    local detached_status=()
+
+    local wt_path="" wt_branch="" wt_head="" wt_detached=0
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^worktree\ (.+)$ ]]; then
+            wt_path="${match[1]}"
+        elif [[ "$line" =~ ^HEAD\ (.+)$ ]]; then
+            wt_head="${match[1]}"
+        elif [[ "$line" =~ ^branch\ refs/heads/(.+)$ ]]; then
+            wt_branch="${match[1]}"
+        elif [[ "$line" == "detached" ]]; then
+            wt_detached=1
+        elif [[ -z "$line" ]]; then
+            if [[ -n "$wt_path" && "$wt_path" != "$main_worktree" ]]; then
+                if [[ -n "$wt_branch" && "$wt_branch" != "main" && "$wt_branch" != "master" ]]; then
+                    if _wt_is_merged "$wt_branch"; then
+                        merged_paths+=("$wt_path")
+                        merged_branches+=("$wt_branch")
+                    fi
+                elif [[ $wt_detached -eq 1 && $include_detached -eq 1 ]]; then
+                    local dirty_count=0
+                    dirty_count=$(git -C "$wt_path" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+                    local reachable=0
+                    if [[ -n "$upstream" ]] && \
+                       git merge-base --is-ancestor "$wt_head" "$upstream" 2>/dev/null; then
+                        reachable=1
+                    fi
+                    detached_paths+=("$wt_path")
+                    detached_heads+=("$wt_head")
+                    if [[ $reachable -eq 0 ]]; then
+                        detached_status+=("unreachable")
+                    elif [[ $dirty_count -gt 0 ]]; then
+                        detached_status+=("dirty:$dirty_count")
+                    else
+                        detached_status+=("safe")
+                    fi
+                fi
+            fi
+            wt_path=""
+            wt_branch=""
+            wt_head=""
+            wt_detached=0
+        fi
+    done < <(git worktree list --porcelain; echo)
+
+    if [[ ${#merged_paths[@]} -eq 0 && ${#detached_paths[@]} -eq 0 ]]; then
+        if [[ $include_detached -eq 1 ]]; then
+            echo "wtp: no merged or detached worktrees to prune"
+        else
+            echo "wtp: no merged worktrees to prune"
+        fi
+        return 0
+    fi
+
+    # Show what would be pruned
+    if [[ ${#merged_paths[@]} -gt 0 ]]; then
+        printf '\033[1mMerged worktrees:\033[0m\n'
+        for i in {1..${#merged_paths[@]}}; do
+            printf '  \033[0;33m%s\033[0m  %s\n' "${merged_branches[$i]}" "${merged_paths[$i]}"
+        done
+    fi
+
+    if [[ ${#detached_paths[@]} -gt 0 ]]; then
+        printf '\033[1mDetached worktrees:\033[0m\n'
+        local st='' tag='' color=''
+        for i in {1..${#detached_paths[@]}}; do
+            st="${detached_status[$i]}"
+            case "$st" in
+                safe)        color='\033[0;32m'; tag='[safe]' ;;
+                dirty:*)     color='\033[0;33m'; tag="[${st#dirty:} modified]" ;;
+                unreachable) color='\033[0;31m'; tag='[unreachable — commits would be lost]' ;;
+            esac
+            printf '  \033[0;36m%s\033[0m  %s  %b%s\033[0m\n' \
+                "${detached_heads[$i]:0:7}" "${detached_paths[$i]}" "$color" "$tag"
+        done
+    fi
+
+    if [[ $dry_run -eq 1 ]]; then
+        return 0
+    fi
+
+    # Filter detached: skip unreachable unless --force; mark dirty as needing --force
+    local removable_paths=()
+    local removable_force=()
+    local skipped=0
+    if [[ ${#detached_paths[@]} -gt 0 ]]; then
+        for i in {1..${#detached_paths[@]}}; do
+            local s="${detached_status[$i]}"
+            if [[ "$s" == "unreachable" && $force_flag -eq 0 ]]; then
+                skipped=$((skipped + 1))
+                continue
+            fi
+            removable_paths+=("${detached_paths[$i]}")
+            if [[ "$s" == "safe" ]]; then
+                removable_force+=("0")
+            else
+                removable_force+=("1")
+            fi
+        done
+    fi
+
+    if [[ $skipped -gt 0 ]]; then
+        printf '\033[0;31mwtp: skipping %d detached worktree(s) with unreachable commits (use -f to force)\033[0m\n' "$skipped"
+    fi
+
+    local total=$((${#merged_paths[@]} + ${#removable_paths[@]}))
+    if [[ $total -eq 0 ]]; then
+        return 0
+    fi
+
+    # Confirm unless --force
+    if [[ $force_flag -eq 0 ]]; then
+        printf '\nDelete %d worktree(s)? [y/N] ' "$total"
+        local reply
+        read -r reply
+        [[ "$reply" != [yY] ]] && return 0
+    fi
+
+    # Delete each merged worktree (delegates to wtd, which also deletes the branch)
+    if [[ ${#merged_paths[@]} -gt 0 ]]; then
+        for i in {1..${#merged_paths[@]}}; do
+            wtd "${merged_branches[$i]}" && \
+                printf '\033[0;32m✓ Removed %s\033[0m\n' "${merged_branches[$i]}"
+        done
+    fi
+
+    # Delete each detached worktree directly via git
+    if [[ ${#removable_paths[@]} -gt 0 ]]; then
+        local target_path='' current_pwd=''
+        for i in {1..${#removable_paths[@]}}; do
+            target_path="${removable_paths[$i]}"
+            current_pwd="$(pwd)"
+            if [[ "$current_pwd" == "$target_path" || "$current_pwd" == "$target_path"/* ]]; then
+                cd "$main_worktree" || return 1
+            fi
+            if [[ "${removable_force[$i]}" -eq 1 ]]; then
+                git worktree remove --force "$target_path" && \
+                    printf '\033[0;32m✓ Removed detached %s\033[0m\n' "$target_path"
+            else
+                git worktree remove "$target_path" && \
+                    printf '\033[0;32m✓ Removed detached %s\033[0m\n' "$target_path"
+            fi
+        done
+    fi
+}
+
+wte() {
+    _wt_require_repo wte || return 1
+
+    local target="$1"
+    local wt_path
+
+    if [[ -z "$target" ]]; then
+        wt_path=$(pwd)
+    else
+        wt_path=$(_wt_lookup_path "$target")
+        if [[ -z "$wt_path" ]]; then
+            local default_parent
+            default_parent=$(_wt_default_dir) || return 1
+            local candidate="${default_parent}/${target}"
+            [[ -d "$candidate" ]] && wt_path="$candidate"
+        fi
+    fi
+
+    if [[ -z "$wt_path" || ! -d "$wt_path" ]]; then
+        echo "wte: no worktree found for '${target:-$(pwd)}'" >&2
+        return 1
+    fi
+
+    local editor="${VISUAL:-${EDITOR:-vi}}"
+
+    # Detect IDE-style editors and open the directory
+    case "$editor" in
+        code|code-insiders) "$editor" "$wt_path" ;;
+        cursor) "$editor" "$wt_path" ;;
+        zed) "$editor" "$wt_path" ;;
+        subl|sublime*) "$editor" "$wt_path" ;;
+        *) cd "$wt_path" && "$editor" . ;;
+    esac
+}
+
 wtc() {
     _wt_require_repo wtc || return 1
 
@@ -428,14 +709,14 @@ wtl() {
             status_color="$c_green"
         fi
 
-        # Count symlinks (exclude .worktrees directory from main worktree only)
-        if [[ "$wt_path" != *"/.worktrees/"* ]]; then
-            # Main worktree - exclude .worktrees subdirectory
-            symlink_count=$(find "$wt_path" -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null | wc -l | tr -d ' ')
-        else
-            # Inside a worktree - show all symlinks
-            symlink_count=$(find "$wt_path" -type l ! -path '*/.git/*' 2>/dev/null | wc -l | tr -d ' ')
-        fi
+        # Count symlinks (exclude .git, .worktrees, and skip-pattern dirs like node_modules)
+        local _find_exclude=('!' '-path' '*/.git/*')
+        [[ "$wt_path" != *"/.worktrees/"* ]] && _find_exclude+=('!' '-path' '*/.worktrees/*')
+        local _pat=''
+        while IFS= read -r _pat; do
+            _find_exclude+=('!' '-path' "*/${_pat}/*")
+        done < <(_wt_skip_patterns "$repo_root")
+        symlink_count=$(find "$wt_path" -type l "${_find_exclude[@]}" 2>/dev/null | wc -l | tr -d ' ')
 
         # Current indicator
         indicator=" "
@@ -478,13 +759,7 @@ wtl() {
 
             # Show symlinks in -vv mode
             if [[ $verbose -ge 2 ]]; then
-                if [[ "$wt_path" != *"/.worktrees/"* ]]; then
-                    # Main worktree - exclude .worktrees subdirectory
-                    symlinks=$(find "$wt_path" -type l ! -path '*/.git/*' ! -path '*/.worktrees/*' 2>/dev/null)
-                else
-                    # Inside a worktree - show all symlinks
-                    symlinks=$(find "$wt_path" -type l ! -path '*/.git/*' 2>/dev/null)
-                fi
+                symlinks=$(find "$wt_path" -type l "${_find_exclude[@]}" 2>/dev/null)
                 if [[ -n "$symlinks" ]]; then
                     printf "\n    ${c_dim}symlinks:${c_reset}"
                     while IFS= read -r link; do
@@ -538,6 +813,15 @@ wt() {
         l|list|ls)
             wtl "$@"
             ;;
+        s|sync)
+            wts "$@"
+            ;;
+        p|prune)
+            wtp "$@"
+            ;;
+        e|edit)
+            wte "$@"
+            ;;
         -v|-vv)
             # Allow wt -v or wt -vv as shorthand for wt list -v/-vv
             wtl "$cmd" "$@"
@@ -549,6 +833,9 @@ wt() {
             echo "  list, ls, l      List worktrees (default)"
             echo "  create, c        Create/switch to worktree"
             echo "  delete, rm, d    Delete worktree"
+            echo "  sync, s          Re-sync symlinks from main worktree"
+            echo "  prune, p         Delete all worktrees with merged branches"
+            echo "  edit, e          Open worktree in \$VISUAL/\$EDITOR"
             echo ""
             echo "examples:"
             echo "  wt               List all worktrees"
@@ -556,6 +843,11 @@ wt() {
             echo "  wt c feature-x   Create and cd to feature-x worktree"
             echo "  wt d feature-x   Delete feature-x worktree"
             echo "  wt d             Delete current worktree"
+            echo "  wt s             Sync symlinks to current worktree"
+            echo "  wt s --all       Sync symlinks to all worktrees"
+            echo "  wt p             Prune merged worktrees (interactive)"
+            echo "  wt p -n          Dry-run: show what would be pruned"
+            echo "  wt e feature-x   Open feature-x worktree in editor"
             echo ""
             echo "symlink sync:"
             echo "  When creating a worktree, gitignored files from the main worktree are"
