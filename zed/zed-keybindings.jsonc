@@ -47,6 +47,7 @@
     "bindings": {
       "cmd-r": "workspace::Reload",
       "cmd-k cmd-c": "workspace::CopyRelativePath",
+      "cmd-k c": "workspace::CopyRelativePath",
       "shift-cmd-f": "project_search::ToggleFocus",
       "ctrl-j": "pane::ActivatePreviousItem",
       "ctrl-k": "pane::ActivateNextItem",
@@ -92,6 +93,23 @@
     "bindings": {
       "ctrl-k": "menu::SelectPrevious",
       "ctrl-j": "menu::SelectNext",
+    },
+  },
+  {
+    "context": "(AgentPanel && acp_thread)",
+    "bindings": {
+      "cmd-e": "agent::NewThread",
+    },
+  },
+  {
+    "context": "(Editor && mode == full)",
+    "bindings": {
+      "cmd-shift-e": [
+        "buffer_search::Deploy",
+        {
+          "focus": false,
+        },
+      ],
     },
   },
 ]
