@@ -1,6 +1,6 @@
 ---
 name: clip
-version: 1.1.0
+version: 1.2.0
 description: |
   Copy text to the macOS clipboard via stdin so paragraph breaks and literal
   newlines survive (no terminal line-wrap mangling, no temp files). Triggered
@@ -36,16 +36,22 @@ it, copy that text. If ambiguous, ask which block.
 
 Pipe the text directly to `pbcopy` via a quoted heredoc in a single `Bash`
 call. No temp file, no cleanup step. The single-quoted `'CLIPEOF'` delimiter
-prevents shell expansion of backticks, `$`, etc. inside the content:
+prevents shell expansion of backticks, `$`, etc. inside the content.
+
+Run this with `dangerouslyDisableSandbox: true`. The command sandbox blocks the
+clipboard syscall **silently**: `pbcopy` is prevented from writing but still
+exits 0, so a blind `echo "Copied"` reports false success. Disable the sandbox
+and verify with `pbpaste` instead of trusting the exit code:
 
 ```
 pbcopy <<'CLIPEOF'
 <exact text to copy, preserving paragraph breaks>
 CLIPEOF
-echo "Copied to clipboard"
+echo "--- exit: $? ---"; pbpaste | head -1
 ```
 
-Then confirm to the user in one short line that the text is on the clipboard.
+Confirm the `pbpaste` output matches the start of what you copied, then tell the
+user in one short line that the text is on the clipboard.
 
 ## Platform fallbacks
 
@@ -61,9 +67,10 @@ Detect via `uname` if the platform is unclear.
 
 ## Notes
 
-- If `pbcopy` fails inside the sandbox with "Operation not permitted",
-  re-run the same command with `dangerouslyDisableSandbox: true`. This is
-  expected; the sandbox blocks clipboard syscalls.
+- Always run the copy with `dangerouslyDisableSandbox: true`. The sandbox blocks
+  the clipboard write silently (no error, exit 0), so without this the copy
+  appears to succeed but nothing lands on the clipboard. The user can allow
+  clipboard writes via `/sandbox` to avoid the per-command override.
 - If the content contains the literal string `CLIPEOF`, switch to a different
   unique delimiter (e.g. `CLIPEOF_2`).
 - Never echo the full text back to the user as part of confirmation; they
