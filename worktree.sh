@@ -188,6 +188,15 @@ _wt_is_merged() {
     [[ "$cherry_result" == "-"* ]]
 }
 
+_wt_head_is_referenced() {
+    local head="$1"
+
+    [[ -z "$head" ]] && return 1
+
+    git for-each-ref --contains="$head" --format='%(refname)' \
+        refs/heads refs/remotes refs/tags 2>/dev/null | grep -q .
+}
+
 wts() {
     _wt_require_repo wts || return 1
 
@@ -269,18 +278,6 @@ wtp() {
     local main_worktree
     main_worktree=$(_wt_repo_root) || return 1
 
-    # Resolve upstream once for detached-reachability checks
-    local upstream=""
-    if git show-ref --verify --quiet refs/remotes/origin/main; then
-        upstream="origin/main"
-    elif git show-ref --verify --quiet refs/remotes/origin/master; then
-        upstream="origin/master"
-    elif git show-ref --verify --quiet refs/heads/main; then
-        upstream="main"
-    elif git show-ref --verify --quiet refs/heads/master; then
-        upstream="master"
-    fi
-
     # Collect worktrees with merged branches
     local merged_paths=()
     local merged_branches=()
@@ -307,22 +304,25 @@ wtp() {
                         merged_paths+=("$wt_path")
                         merged_branches+=("$wt_branch")
                     fi
-                elif [[ $wt_detached -eq 1 && $include_detached -eq 1 ]]; then
+                elif [[ $wt_detached -eq 1 ]]; then
                     local dirty_count=0
                     dirty_count=$(git -C "$wt_path" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-                    local reachable=0
-                    if [[ -n "$upstream" ]] && \
-                       git merge-base --is-ancestor "$wt_head" "$upstream" 2>/dev/null; then
-                        reachable=1
+                    local referenced=0
+                    if _wt_head_is_referenced "$wt_head"; then
+                        referenced=1
                     fi
-                    detached_paths+=("$wt_path")
-                    detached_heads+=("$wt_head")
-                    if [[ $reachable -eq 0 ]]; then
-                        detached_status+=("unreachable")
+                    local detached_state=""
+                    if [[ $referenced -eq 0 ]]; then
+                        detached_state="unreachable"
                     elif [[ $dirty_count -gt 0 ]]; then
-                        detached_status+=("dirty:$dirty_count")
+                        detached_state="dirty:$dirty_count"
                     else
-                        detached_status+=("safe")
+                        detached_state="safe"
+                    fi
+                    if [[ "$detached_state" == "safe" || $include_detached -eq 1 ]]; then
+                        detached_paths+=("$wt_path")
+                        detached_heads+=("$wt_head")
+                        detached_status+=("$detached_state")
                     fi
                 fi
             fi
@@ -337,7 +337,7 @@ wtp() {
         if [[ $include_detached -eq 1 ]]; then
             echo "wtp: no merged or detached worktrees to prune"
         else
-            echo "wtp: no merged worktrees to prune"
+            echo "wtp: no merged or safe detached worktrees to prune"
         fi
         return 0
     fi
@@ -369,14 +369,14 @@ wtp() {
         return 0
     fi
 
-    # Filter detached: skip unreachable unless --force; mark dirty as needing --force
+    # Filter detached: skip dirty/unreferenced entries unless --force
     local removable_paths=()
     local removable_force=()
     local skipped=0
     if [[ ${#detached_paths[@]} -gt 0 ]]; then
         for i in {1..${#detached_paths[@]}}; do
             local s="${detached_status[$i]}"
-            if [[ "$s" == "unreachable" && $force_flag -eq 0 ]]; then
+            if [[ "$s" != "safe" && $force_flag -eq 0 ]]; then
                 skipped=$((skipped + 1))
                 continue
             fi
@@ -390,7 +390,7 @@ wtp() {
     fi
 
     if [[ $skipped -gt 0 ]]; then
-        printf '\033[0;31mwtp: skipping %d detached worktree(s) with unreachable commits (use -f to force)\033[0m\n' "$skipped"
+        printf '\033[0;31mwtp: skipping %d dirty or unreferenced detached worktree(s) (use -f to force)\033[0m\n' "$skipped"
     fi
 
     local total=$((${#merged_paths[@]} + ${#removable_paths[@]}))
@@ -834,7 +834,7 @@ wt() {
             echo "  create, c        Create/switch to worktree"
             echo "  delete, rm, d    Delete worktree"
             echo "  sync, s          Re-sync symlinks from main worktree"
-            echo "  prune, p         Delete all worktrees with merged branches"
+            echo "  prune, p         Delete merged and safe detached worktrees"
             echo "  edit, e          Open worktree in \$VISUAL/\$EDITOR"
             echo ""
             echo "examples:"
@@ -845,8 +845,9 @@ wt() {
             echo "  wt d             Delete current worktree"
             echo "  wt s             Sync symlinks to current worktree"
             echo "  wt s --all       Sync symlinks to all worktrees"
-            echo "  wt p             Prune merged worktrees (interactive)"
+            echo "  wt p             Prune merged and safe detached worktrees (interactive)"
             echo "  wt p -n          Dry-run: show what would be pruned"
+            echo "  wt p -d          Also show dirty/unreferenced detached worktrees"
             echo "  wt e feature-x   Open feature-x worktree in editor"
             echo ""
             echo "symlink sync:"

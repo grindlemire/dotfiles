@@ -23,8 +23,8 @@ _wt() {
                 'd:Delete worktree'
                 'sync:Re-sync symlinks from main worktree'
                 's:Re-sync symlinks from main worktree'
-                'prune:Delete all worktrees with merged branches'
-                'p:Delete all worktrees with merged branches'
+                'prune:Delete merged and safe detached worktrees'
+                'p:Delete merged and safe detached worktrees'
                 'edit:Open worktree in editor'
                 'e:Open worktree in editor'
                 'help:Show help'
@@ -98,7 +98,8 @@ _wt() {
                 p|prune)
                     _arguments \
                         '(-n --dry-run)'{-n,--dry-run}'[Show what would be pruned]' \
-                        '(-f --force)'{-f,--force}'[Skip confirmation prompt]'
+                        '(-f --force)'{-f,--force}'[Skip confirmation prompt and allow dirty/unreferenced detached removal]' \
+                        '(-d --detached)'{-d,--detached}'[Also show dirty/unreferenced detached worktrees]'
                     ;;
                 e|edit)
                     # Complete existing worktrees for edit
