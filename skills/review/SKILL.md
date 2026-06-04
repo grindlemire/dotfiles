@@ -1,7 +1,7 @@
 ---
 name: review
 description: Use when reviewing code in any language or stack — Go, TypeScript, htmx, go-templ, SolidJS, Tailwind, and more — for correctness, security, over-engineering, idioms, design, and maintainability. Applies a language-agnostic core review plus stack-specific reviewer lenses, composed per file. Use for reviewing a PR, a diff, or specific files.
-argument-hint: "[PR# | files… | (blank = current branch vs master)]"
+argument-hint: "[PR# | files… | (blank = uncommitted changes, else branch vs main)]"
 ---
 
 # Review
@@ -16,10 +16,13 @@ Run these steps in order.
 
 ### 1. Determine scope
 
-Figure out what you are reviewing:
+Figure out what you are reviewing, in this order:
 - **Argument is a number** (e.g. `1234`) → a PR: `gh pr diff 1234`.
 - **Argument is one or more paths** → review those files (current working-tree contents).
-- **No argument** → the current branch vs `master`: `git diff master...HEAD` (fall back to `main` if there is no `master`).
+- **No argument, working tree is dirty** → the uncommitted changes: `git diff HEAD`. This is the common case — what you're about to commit.
+- **No argument, working tree is clean** → the current branch vs its base. Detect the base in this order: the target of `origin/HEAD`, then `main`, then `master`; review `git diff <base>...HEAD`.
+
+Never resolve to an empty scope. If the selected diff is empty, say so and stop — don't report "no issues" on nothing.
 
 Read the actual changed code, not just the diff hunks — open the surrounding functions so findings are grounded.
 
@@ -35,10 +38,10 @@ Inspect the changed files and the project. Activate a lens when any signal match
 |---|---|
 | `*.go` file | `go` |
 | `*.templ` file | `go-templ` **+ `go`** |
-| `*.ts` / `*.tsx` / `*.js` / `*.jsx` file | `typescript` |
+| `*.ts` / `*.tsx` file | `typescript` |
 | `solid-js` in `package.json`, or Solid patterns (`createSignal`, `solid-js/web`) in a `.tsx` | `solidjs` **+ `typescript`** |
 | `hx-` attribute (`hx-get`, `hx-post`, `hx-swap`, …) in any reviewed file | `htmx` |
-| `tailwind.config.*`, `@tailwind`, or utility-class strings (`class="flex gap-2 …"`) | `tailwind` |
+| `tailwind.config.*` in the repo, `@tailwind`, or Tailwind-shaped class tokens (`md:`/`hover:` prefixes, arbitrary `[…]`, scale utilities) — not bare `class="…"` | `tailwind` |
 | `*.css` / `*.scss` with no Tailwind signal | generic CSS (use `core` only) |
 
 Composition: `go-templ → go`, `solidjs → typescript`. `htmx` and `tailwind` are cross-cutting — they ride on whatever host file (HTML, `.templ`, `.tsx`) carries the attributes/classes.

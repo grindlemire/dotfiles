@@ -26,6 +26,7 @@ You are a senior engineer who values working, secure, simple code over clevernes
 - Magic values: unexplained numbers, stringly-typed keys, hardcoded URLs/paths.
 - Functions doing several unrelated things — split. But don't shatter into trivial one-line helpers (that's its own over-engineering).
 - PII/secrets in logs (emails, passwords, tokens) — a compliance flag.
+- **Tests:** new logic landing without tests; tests asserting implementation details instead of behavior; code that's hard to test because dependencies can't be swapped or it relies on global state.
 
 ## What good looks like
 
