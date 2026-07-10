@@ -53,14 +53,24 @@ for skill_path in "$SRC_DIR"/*/; do
   done
 done
 
-# Experimental skills (mattpocock trial set) — only for the `tc` sandbox Claude
-# (`CLAUDE_CONFIG_DIR=~/.claude-test`), never the regular ~/.claude or Codex.
-# See ../experimental_skills.
+# Experimental skills (mattpocock trial set) — only for the test sandboxes:
+# `tc`  (CLAUDE_CONFIG_DIR=~/.claude-test) → ~/.claude-test/skills
+# `tcx` (CODEX_HOME=~/.codex-test)         → ~/.codex-test/skills
+# Never the regular ~/.claude or ~/.codex installs. See ../experimental_skills.
 EXP_DIR="$(cd "$SRC_DIR/.." && pwd)/experimental_skills"
-EXP_DEST="${HOME}/.claude-test/skills"
-if [ -d "$EXP_DIR" ] && { [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; }; then
-  mkdir -p "$EXP_DEST"
-  for skill_path in "$EXP_DIR"/*/; do
-    link_skill "$skill_path" "$EXP_DEST"
-  done
+if [ -d "$EXP_DIR" ]; then
+  # tc: CLAUDE_CONFIG_DIR=~/.claude-test → reads ~/.claude-test/skills
+  if [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; then
+    mkdir -p "${HOME}/.claude-test/skills"
+    for skill_path in "$EXP_DIR"/*/; do
+      link_skill "$skill_path" "${HOME}/.claude-test/skills"
+    done
+  fi
+  # tcx: CODEX_HOME=~/.codex-test → reads ~/.codex-test/skills
+  if [ "$TARGET" = "all" ] || [ "$TARGET" = "codex" ]; then
+    mkdir -p "${HOME}/.codex-test/skills"
+    for skill_path in "$EXP_DIR"/*/; do
+      link_skill "$skill_path" "${HOME}/.codex-test/skills"
+    done
+  fi
 fi
