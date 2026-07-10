@@ -261,7 +261,10 @@ grollback() {
     git revert --no-edit HEAD
 }
 
-gs() {
+unalias gs 2>/dev/null
+unfunction gs 2>/dev/null
+
+gstat() {
     git status -sb
 }
 
@@ -652,7 +655,7 @@ cc() {
     done
 
     if [[ $yolo -eq 1 ]]; then
-        claude --allow-dangerously-skip-permissions "${args[@]}"
+        claude --permission-mode auto "${args[@]}"
     else
         claude "${args[@]}"
     fi
