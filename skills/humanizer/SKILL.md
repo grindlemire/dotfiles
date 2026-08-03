@@ -1,13 +1,14 @@
 ---
 name: humanizer
-version: 2.2.0
+version: 2.3.0
 description: |
   Remove signs of AI-generated writing from text. Use when editing or reviewing
   text to make it sound more natural and human-written. Based on Wikipedia's
   comprehensive "Signs of AI writing" guide. Detects and fixes patterns including:
   inflated symbolism, promotional language, superficial -ing analyses, vague
   attributions, em dash overuse, rule of three, AI vocabulary words, negative
-  parallelisms, and excessive conjunctive phrases.
+  parallelisms, bare assertions of reality ("the risk is real"), alliterative
+  phrasing, and excessive conjunctive phrases.
 
   Credits: Original skill by @blader - https://github.com/blader/humanizer
 allowed-tools:
@@ -525,9 +526,36 @@ If none of those apply, it's manufactured staccato. Merge it into a neighboring 
 - "The implications are significant"
 - "This is the deepest problem"
 - "The stakes are high"
-- "The consequences are real"
+- "The consequences are real" (see §29a for the full "X is real" family)
 
 **Fix:** Name the specific reason, implication, problem, or consequence. If you can't name it, cut the sentence.
+
+---
+
+### 29a. "X is real" and other bare assertions of reality
+
+**HARD RULE: Never certify that something exists or matters. Show it instead.**
+
+**Problem:** AI backs a claim by asserting the claim's reality. "The risk is real." "The pain is real." "The gains are real." The sentence reads as emphasis but carries no information: the reader learns only that the writer believes it. Human writers reach for this when they have evidence and are summarizing; AI reaches for it when it has nothing and needs the beat.
+
+**Banned constructions (non-exhaustive):**
+- "The [risk/pain/threat/concern/problem/danger/cost/tradeoff] is real"
+- "The [gains/benefits/savings/wins/improvements] are real"
+- "and it's real" / "(is real)" / "this is real" / "that part is real"
+- "the struggle is real"
+- Reality-certifying variants: "this is not hypothetical," "this isn't theoretical," "this actually happens," "it's happening right now," "make no mistake, X exists," "X is a real problem," "that's a genuine tradeoff"
+
+It gets worse when bolted to a concession, because it drags a negative parallelism (§9) along with it: "Yes, some of it is hype. But the value is real."
+
+**Fix:** Replace the assertion with the evidence. Give the number, the incident, the consequence, the person it happened to. If you have no evidence, cut the sentence. Certifying reality is what writers do when they have none.
+
+**Before:**
+> Teams worry about the maintenance burden, and the concern is real. But the productivity gains are real too.
+
+**After:**
+> Two of the four teams that adopted it spent more time on upgrades than the tool saved. The other two cut their release cycle from two weeks to three days.
+
+**General shape to flag:** any sentence whose entire job is to vouch for a thing already named. Name the thing instead.
 
 ---
 
@@ -570,6 +598,35 @@ If none of those apply, it's manufactured staccato. Merge it into a neighboring 
 **Problem:** Sentences that lead with "What," "When," "Where," "Which," "Who," "Why," "How" become a crutch for delaying the subject. Paragraphs that open with "So" do the same.
 
 **Fix:** Restructure. Lead with the subject or the verb. "What makes this hard is the locking behavior" → "The locking behavior is the hard part" → better, name the specific lock.
+
+---
+
+### 33a. Alliteration and sound-matched phrasing
+
+**Problem:** LLMs pick words that share an opening sound because the result sounds composed. Human writers alliterate rarely and usually by accident. AI does it constantly, and does it in the load-bearing spots: headings, titles, taglines, list items, closing lines. The giveaway is that the matched word is never the most accurate one available. It was chosen for its first letter.
+
+**Patterns:**
+- Alliterative pairs joined by and/or: "risk and reward," "promise and peril," "form and function," "practice and principle," "build and break," "clarity and confidence," "pipelines and pitfalls"
+- Alliterative adjective + noun: "seamless synergy," "powerful platform," "curated collection," "modern marvel," "digital dawn," "silent saboteur," "hidden hazard," "brittle boundaries"
+- Alliterative triples, which compound the rule of three (§10): "fast, flexible, and future-proof"; "plan, prepare, prevail"; "test, tune, ship" (near-miss counts)
+- Headings and section titles built on sound: "Testing, tooling, and traps," "Metrics that matter"
+- Near-alliteration and rhyme, same problem: matched vowel sounds ("signal and noise"), internal rhyme ("move fast and last"), consonance at the end of stressed words
+
+**Fix:** Keep the word that's accurate, rewrite the one that was chosen for sound. Ask what each half of the pair is doing; usually one is decoration and can be replaced with something specific or cut. "Risk and reward" → "what it costs and what you get." "Seamless synergy" → cut both and name the integration. "Powerful platform" → say what it does.
+
+**Test:** read it aloud. If two stressed words in a phrase start with the same sound, at least one was picked by ear. Confirm it's also the right word, or replace it. Alliteration is not banned outright the way em dashes are, but it must survive that check, and it must not appear in more than one phrase per page.
+
+**Before:**
+> The framework offers a powerful platform for building better bots, balancing flexibility with familiarity.
+
+**After:**
+> The framework handles retries and rate limits for you, and its API mirrors the one in the standard library.
+
+**Before (heading):**
+> ## Prompts, pitfalls, and production
+
+**After:**
+> ## Writing prompts that survive production
 
 ---
 
@@ -667,6 +724,8 @@ Run through this before declaring text humanized. The em dash check is MECHANICA
 - Three consecutive sentences match length? Break one.
 - Paragraph ends with punchy one-liner? Vary it.
 - Vague declarative ("The implications are significant")? Name the specific implication.
+- Any "X is real" / "the concern is real" / "this isn't hypothetical"? Replace with the evidence or cut (see §29a).
+- Two stressed words in a phrase sharing an opening sound ("promise and peril," "powerful platform")? Replace the one picked for sound. Check headings and closing lines first (see §33a).
 - Narrator-from-a-distance ("Nobody designed this")? Put the reader in the scene.
 - Meta-commentary ("The rest of this essay...")? Delete.
 - Any lazy extremes (every, always, never)? Replace with specifics.
