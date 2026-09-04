@@ -74,3 +74,23 @@ if [ -d "$EXP_DIR" ]; then
     done
   fi
 fi
+
+# Selected stable skills (from skills/) that should ALSO appear in the test
+# sandboxes, alongside the experimental trial set above. e.g. humanizer lives
+# in the stable set but is wanted in tc / tcx too.
+STABLE_TEST_SKILLS=(humanizer)
+for skill in "${STABLE_TEST_SKILLS[@]}"; do
+  skill_path="$SRC_DIR/$skill"
+  if [ ! -d "$skill_path" ]; then
+    echo "warn: stable skill '$skill' not found at $skill_path" >&2
+    continue
+  fi
+  if [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; then
+    mkdir -p "${HOME}/.claude-test/skills"
+    link_skill "$skill_path" "${HOME}/.claude-test/skills"
+  fi
+  if [ "$TARGET" = "all" ] || [ "$TARGET" = "codex" ]; then
+    mkdir -p "${HOME}/.codex-test/skills"
+    link_skill "$skill_path" "${HOME}/.codex-test/skills"
+  fi
+done
