@@ -8,6 +8,7 @@ Place this repository in `~/dotfiles` and symlink the main configuration:
 
 ```bash
 ln -s ~/dotfiles/zshrc.sh ~/.zshrc
+ln -s ~/dotfiles/ghostty/config ~/.config/ghostty/config
 ```
 
 ## Configuration Files
@@ -26,6 +27,10 @@ ln -s ~/dotfiles/zshrc.sh ~/.zshrc
 - **`docker.sh`** - Docker and docker-compose shortcuts and utilities
 - **`virtualenv.sh`** - Python virtual environment management
 - **`worktree.sh`** - Git worktree utilities for managing multiple branches
+
+### Terminal
+
+- **`ghostty/config`** - Ghostty terminal configuration (theme, palette, font size)
 
 ### Claude Code Skills
 
