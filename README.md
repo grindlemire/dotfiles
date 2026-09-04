@@ -20,7 +20,7 @@ ln -s ~/dotfiles/ghostty/config ~/.config/ghostty/config
 
 ### Platform-Specific
 
-- **`macbook.sh`** - macOS-specific settings including key remapping (Caps Lock ↔ Escape, Escape ↔ Tilde)
+- **`macbook.sh`** - macOS-specific settings including key remapping (Caps Lock → Escape)
 
 ### Utility Modules
 
