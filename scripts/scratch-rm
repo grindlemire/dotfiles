@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# scratch-rm: delete scratch files and verification screenshots, and nothing
+# else, so an agent can clean up after itself without a blanket rm -r grant
+# (settings deny rm -r/-rf/-f outright).
+#
+#   scratch-rm <path>...
+#
+# A path is deleted (recursively, if a directory) only when it is:
+#   - inside Claude's temp area, /private/tmp/claude-<uid>/ (session
+#     scratchpads), but not that directory itself
+#   - inside a git repo, not tracked, and either an image (png, jpg, jpeg,
+#     gif, webp) or inside a .playwright-mcp/ or dev/scratch/ directory
+# Anything else is refused and left alone. Exits 1 if any path was refused.
+set -uo pipefail
+shopt -s nocasematch
+
+tmp_root="$(cd "/private/tmp/claude-$(id -u)" 2>/dev/null && pwd -P)"
+
+# allowed reports whether real, a resolved absolute path, may be deleted.
+allowed() {
+  local real="$1" dir top rel
+  if [[ -n "$tmp_root" && "$real" == "$tmp_root"/* ]]; then
+    return 0
+  fi
+  if [[ -d "$real" ]]; then dir="$real"; else dir="$(dirname "$real")"; fi
+  top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || return 1
+  top="$(cd "$top" && pwd -P)"
+  [[ "$real" == "$top"/* ]] || return 1
+  # Anything git tracks is never scratch, including a directory holding it.
+  [[ -z "$(git -C "$top" ls-files -- "$real" | head -n 1)" ]] || return 1
+  rel="${real#"$top"/}"
+  case "$rel" in
+    .playwright-mcp | .playwright-mcp/* | */.playwright-mcp/* | dev/scratch/?*) return 0 ;;
+  esac
+  [[ -f "$real" ]] || return 1
+  case "$real" in
+    *.png | *.jpg | *.jpeg | *.gif | *.webp) return 0 ;;
+  esac
+  return 1
+}
+
+if [[ $# -eq 0 ]]; then
+  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  exit 2
+fi
+
+status=0
+for path in "$@"; do
+  if [[ ! -e "$path" && ! -L "$path" ]]; then
+    echo "scratch-rm: $path: no such file" >&2
+    status=1
+    continue
+  fi
+  real="$(realpath "$path")"
+  if allowed "$real"; then
+    rm -rf -- "$real" && echo "removed $real"
+  else
+    echo "scratch-rm: refused $path (not scratch; see scratch-rm with no args)" >&2
+    status=1
+  fi
+done
+exit $status
