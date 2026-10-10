@@ -53,31 +53,31 @@ for skill_path in "$SRC_DIR"/*/; do
   done
 done
 
-# Experimental skills (mattpocock trial set) — only for the test sandboxes:
-# `tc`  (CLAUDE_CONFIG_DIR=~/.claude-test) → ~/.claude-test/skills
-# `tcx` (CODEX_HOME=~/.codex-test)         → ~/.codex-test/skills
-# Never the regular ~/.claude or ~/.codex installs. See ../experimental_skills.
-EXP_DIR="$(cd "$SRC_DIR/.." && pwd)/experimental_skills"
-if [ -d "$EXP_DIR" ]; then
-  # tc: CLAUDE_CONFIG_DIR=~/.claude-test → reads ~/.claude-test/skills
-  if [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; then
-    mkdir -p "${HOME}/.claude-test/skills"
-    for skill_path in "$EXP_DIR"/*/; do
-      link_skill "$skill_path" "${HOME}/.claude-test/skills"
-    done
+# Trial plugins — only for the test sandboxes, never the regular ~/.claude or
+# ~/.codex installs. Installed from the author's own marketplace so they track
+# upstream HEAD (the claude-plugins-official entry pins an old commit).
+# `tc`  (CLAUDE_CONFIG_DIR=~/.claude-test)
+# `tcx` (CODEX_HOME=~/.codex-test)
+TRIAL_MARKETPLACE_REPO="mattpocock/skills"
+TRIAL_MARKETPLACE="mattpocock"
+TRIAL_PLUGIN="mattpocock-skills@${TRIAL_MARKETPLACE}"
+
+if { [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; } && command -v claude >/dev/null; then
+  if ! CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin list 2>/dev/null | grep -q "$TRIAL_PLUGIN"; then
+    CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin marketplace add "$TRIAL_MARKETPLACE_REPO"
+    CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin install "$TRIAL_PLUGIN"
   fi
-  # tcx: CODEX_HOME=~/.codex-test → reads ~/.codex-test/skills
-  if [ "$TARGET" = "all" ] || [ "$TARGET" = "codex" ]; then
-    mkdir -p "${HOME}/.codex-test/skills"
-    for skill_path in "$EXP_DIR"/*/; do
-      link_skill "$skill_path" "${HOME}/.codex-test/skills"
-    done
+fi
+if { [ "$TARGET" = "all" ] || [ "$TARGET" = "codex" ]; } && command -v codex >/dev/null; then
+  if ! CODEX_HOME="${HOME}/.codex-test" codex plugin list 2>/dev/null | grep -q "$TRIAL_PLUGIN"; then
+    CODEX_HOME="${HOME}/.codex-test" codex plugin marketplace add "$TRIAL_MARKETPLACE_REPO"
+    CODEX_HOME="${HOME}/.codex-test" codex plugin add "$TRIAL_PLUGIN"
   fi
 fi
 
 # Selected stable skills (from skills/) that should ALSO appear in the test
-# sandboxes, alongside the experimental trial set above. e.g. humanizer lives
-# in the stable set but is wanted in tc / tcx too.
+# sandboxes, alongside the trial plugins above. e.g. humanizer lives in the
+# stable set but is wanted in tc / tcx too.
 STABLE_TEST_SKILLS=(humanizer)
 for skill in "${STABLE_TEST_SKILLS[@]}"; do
   skill_path="$SRC_DIR/$skill"
