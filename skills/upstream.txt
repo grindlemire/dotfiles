@@ -1,0 +1,9 @@
+# Upstream skills synced into this directory by sync-upstream.sh.
+# One per line: <github owner/repo> <path to the skill directory in that repo>
+# A weekly GitHub Action (.github/workflows/sync-upstream-skills.yml) opens a
+# PR when any of them change upstream. Try a skill in the tc/tcx sandbox first
+# (the full plugin is installed there), then promote it here.
+#
+# e.g.
+# mattpocock/skills skills/productivity/grilling
+# mattpocock/skills skills/productivity/wait-what
