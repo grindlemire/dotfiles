@@ -55,24 +55,6 @@ GLOBAL_EMAIL="$(git config --global user.email 2>/dev/null || true)"
 color=0
 [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && color=1
 
-problems_only=0
-fetch=0
-while getopts "pfh" opt; do
-  case $opt in
-    p) problems_only=1 ;;
-    f) fetch=1 ;;
-    *)
-      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
-      echo
-      echo "Flags (! means a problem, the rest are information):"
-      print_flags
-      exit 0
-      ;;
-  esac
-done
-shift $((OPTIND - 1))
-filter="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
-
 # parse_remote sets host and slug (owner/repo) from a remote URL.
 parse_remote() {
   local u="${1%.git}" rest
@@ -104,20 +86,17 @@ default_branch() {
   done
 }
 
-rows=""
-matched=0
-while IFS= read -r gitdir; do
-  repo="${gitdir%/.git}"
+# row prints one tab-separated table row for the repo at $1. The main run
+# calls this script back as `repos --row <path>`, many at once, because each
+# repo costs a dozen small git processes and running them in turn is slow.
+row() {
+  local repo="$1" rel bucket name host slug where owner last flags unpushed
+  local dirty wts email primary tip branch behind
   rel="${repo#"$ROOT"/}"
   bucket="${rel%%/*}"
   name="${rel##*/}"
 
-  if [ -n "$filter" ]; then
-    case "$(printf '%s' "$rel" | tr '[:upper:]' '[:lower:]')" in *"$filter"*) ;; *) continue ;; esac
-  fi
-  matched=1
-
-  [ "$fetch" = 1 ] && git -C "$repo" fetch --quiet origin 2>/dev/null
+  [ "${REPOS_FETCH:-0}" = 1 ] && git -C "$repo" fetch --quiet origin 2>/dev/null
 
   parse_remote "$(git -C "$repo" remote get-url origin 2>/dev/null || true)"
   where="$(where_of "$host")"
@@ -180,12 +159,46 @@ while IFS= read -r gitdir; do
   fi
 
   flags="${flags# }"
-  [ "$problems_only" = 1 ] && case "$flags" in *'!'*) ;; *) continue ;; esac
-  rows="$rows$rel	$where	${slug:--}	${last:--}	${flags:--}
+  printf '%s\t%s\t%s\t%s\t%s\n' "$rel" "$where" "${slug:--}" "${last:--}" "${flags:--}"
+}
+
+if [ "${1:-}" = --row ]; then
+  row "$2"
+  exit 0
+fi
+
+problems_only=0
+fetch=0
+while getopts "pfh" opt; do
+  case $opt in
+    p) problems_only=1 ;;
+    f) fetch=1 ;;
+    *)
+      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      echo
+      echo "Flags (! means a problem, the rest are information):"
+      print_flags
+      exit 0
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+filter="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
+
+repos_list="$(find "$ROOT" -mindepth 2 -maxdepth 4 \
+                \( -name .worktrees -o -name node_modules -o -name .claude \) -prune -o \
+                -name .git -type d -print -prune 2>/dev/null | sed 's|/\.git$||')"
+if [ -n "$filter" ]; then
+  repos_list="$(printf '%s\n' "$repos_list" | awk -v root="$ROOT/" -v f="$filter" \
+    '{ rel = substr($0, length(root) + 1) } index(tolower(rel), f)')"
+fi
+matched=0
+[ -n "$repos_list" ] && matched=1
+
+rows="$(printf '%s\n' "$repos_list" | grep . | REPOS_FETCH="$fetch" xargs -P 8 -I{} "$0" --row {} | sort)"
+[ "$problems_only" = 1 ] && rows="$(printf '%s\n' "$rows" | awk -F '\t' '$5 ~ /!/')"
+[ -n "$rows" ] && rows="$rows
 "
-done < <(find "$ROOT" -mindepth 2 -maxdepth 4 \
-           \( -name .worktrees -o -name node_modules -o -name .claude \) -prune -o \
-           -name .git -type d -print -prune 2>/dev/null | sort)
 
 if [ "$matched" = 0 ] && [ -n "$filter" ]; then
   echo "no repo under $ROOT matches '$1'" >&2
