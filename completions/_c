@@ -25,6 +25,7 @@ _c() {
             _arguments \
                 '-p[only repos with a problem]' \
                 '-f[fetch every repo first]' \
+                '-g[include -github fallback clones]' \
                 '-h[show help and what each flag means]' \
                 '1:repo:_code_repos'
             ;;
