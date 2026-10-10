@@ -1,0 +1,35 @@
+# Weekly: re-sync the skills listed in skills/upstream.txt and open (or refresh)
+# a PR when any changed upstream. Nothing lands without review.
+name: sync upstream skills
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync
+        run: |
+          {
+            echo "Upstream changes to skills listed in \`skills/upstream.txt\`."
+            echo
+          } > "$RUNNER_TEMP/body.md"
+          SYNC_SUMMARY="$RUNNER_TEMP/summary.md" skills/sync-upstream.sh
+          cat "$RUNNER_TEMP/summary.md" >> "$RUNNER_TEMP/body.md"
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: sync-upstream-skills
+          delete-branch: true
+          commit-message: "skills: sync upstream skills"
+          title: "skills: sync upstream skills"
+          body-path: ${{ runner.temp }}/body.md
