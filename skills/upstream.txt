@@ -7,3 +7,4 @@
 # e.g.
 # mattpocock/skills skills/productivity/grilling
 # mattpocock/skills skills/productivity/wait-what
+mattpocock/skills skills/engineering/retro
