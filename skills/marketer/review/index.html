@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post Queue</title>
+<style>
+  /* Console look (borrowed from GitStack's ui/styles/theme.css tokens): dark panels, hairlines, IBM Plex, square pills.
+     Layout: a 48px bar, then one row per draft: the draft and its thread on the left, a live channel preview on the right. */
+  @font-face { font-family: "IBM Plex Sans"; src: url(/fonts/IBMPlexSans-Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "IBM Plex Sans"; src: url(/fonts/IBMPlexSans-Medium.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "IBM Plex Sans"; src: url(/fonts/IBMPlexSans-SemiBold.woff2) format("woff2"); font-weight: 600; font-display: swap; }
+  @font-face { font-family: "IBM Plex Mono"; src: url(/fonts/IBMPlexMono-Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "IBM Plex Mono"; src: url(/fonts/IBMPlexMono-Medium.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "Inter Tight"; src: url(/fonts/InterTight-SemiBold.woff2) format("woff2"); font-weight: 600; font-display: swap; }
+  @font-face { font-family: "Inter Tight"; src: url(/fonts/InterTight-Bold.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+  :root {
+    --bg0: #0e1116; --bg1: #161a21; --bg2: #1d222b; --bg3: #252a34;
+    --ink95: #e8eaed; --ink80: #c8ccd2; --ink65: #9ba1ac; --ink50: #7a8090; --ink38: #5a606e; --ink22: #3a4050;
+    --line: rgba(255,255,255,.06); --line-strong: rgba(255,255,255,.1);
+    --blue: #5aa0ff; --blue-bg: rgba(90,160,255,.1); --add: #6ad28d; --add-bg: rgba(106,210,141,.1);
+    --del: #ef6f6c; --amber: #f5b95a; --amber-bg: rgba(245,185,90,.1);
+    --btn: #2b313c; --btn-hover: #343b47; --btn-border: rgba(255,255,255,.16); --on-fill: #0b0e12;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --display: "Inter Tight", "IBM Plex Sans", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg0); color: var(--ink95); font: 13px/1.5 var(--sans);
+         scrollbar-color: var(--ink22) var(--bg0); }
+  a { color: var(--blue); }
+
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; height: 48px; display: flex; align-items: center; gap: 10px;
+         padding-inline: 16px; background: var(--bg0); border-bottom: 1px solid var(--line-strong); }
+  .bar img { width: 20px; height: 20px; }
+  .bar .word { font: 600 15px var(--display); letter-spacing: -.01em; }
+  .bar .sep { color: var(--ink38); }
+  .bar .crumb { font: 500 12px var(--mono); color: var(--ink80); }
+  .bar .tally { margin-left: auto; display: flex; gap: 6px; }
+  .bar select { font: 500 12px var(--mono); color: var(--ink80); background: var(--bg1); border: 1px solid var(--line-strong);
+                border-radius: 3px; height: 24px; }
+
+  main { max-width: 1340px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 80px; display: grid; gap: 32px; }
+  .intro { color: var(--ink65); margin: 0; max-width: 80ch; }
+  .intro b { color: var(--ink95); font-weight: 600; }
+  .intro code { font: 12px var(--mono); color: var(--ink95); background: var(--bg2); padding: 1px 5px; border-radius: 3px; }
+  .batch { display: grid; gap: 12px; }
+  .batch-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .label { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ink50); }
+  .batch-head p { margin: 0; color: var(--ink65); }
+
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) 634px; border: 1px solid var(--line-strong);
+         border-radius: 4px; background: var(--bg1); }
+  @media (max-width: 1180px) { .row { grid-template-columns: minmax(0, 1fr); } }
+  .draft { padding: 14px 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .preview { border-left: 1px solid var(--line-strong); background: var(--bg0); padding: 16px; display: grid;
+             gap: 8px; align-content: start; min-width: 0; }
+  @media (max-width: 1180px) { .preview { border-left: 0; border-top: 1px solid var(--line-strong); } }
+  .row.skipped .draft { opacity: .6; }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pill { font: 500 11px/18px var(--mono); padding: 0 6px; border-radius: 3px; border: 1px solid var(--line-strong);
+          color: var(--ink65); white-space: nowrap; }
+  .pill.channel { color: var(--ink95); background: var(--bg3); border-color: var(--btn-border); }
+  .pill.draft { color: var(--blue); background: var(--blue-bg); border-color: transparent; }
+  .pill.posted { color: var(--add); background: var(--add-bg); border-color: transparent; }
+  .pill.skipped { color: var(--ink50); }
+  .pill.wait { color: var(--amber); background: var(--amber-bg); border-color: transparent; }
+  .count { margin-left: auto; font: 12px var(--mono); color: var(--ink50); font-variant-numeric: tabular-nums; }
+  .count.over { color: var(--del); font-weight: 500; }
+
+  .text { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.55; color: var(--ink95); }
+  .text .lk { color: var(--blue); }
+  .facts { display: grid; gap: 2px; font-size: 12px; color: var(--ink50); }
+  .facts b { color: var(--ink65); font-weight: 500; }
+  .facts a { word-break: break-all; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 4px; cursor: pointer;
+           font: 500 11.5px var(--mono); color: var(--ink95); background: var(--btn); border: 1px solid var(--btn-border); }
+  a.btn { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 4px; text-decoration: none;
+          font: 500 11.5px var(--mono); background: var(--blue); border: 1px solid var(--blue); color: var(--on-fill); }
+  a.btn:hover { filter: brightness(1.1); }
+  button:hover { background: var(--btn-hover); border-color: rgba(255,255,255,.26); }
+  button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  button.primary, button.on { background: var(--blue); border-color: var(--blue); color: var(--on-fill); }
+  button.on.posted { background: var(--add); border-color: var(--add); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--ink65); }
+  button.ghost:hover { color: var(--ink95); background: var(--bg2); }
+
+  .panel { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--bg2); }
+  .panel label { font-size: 12px; color: var(--ink65); }
+  .inline { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  textarea, input[type=text] { flex: 1; min-width: 0; font: 13px/1.5 var(--sans); color: var(--ink95); background: var(--bg0);
+           border: 1px solid var(--line-strong); border-radius: 4px; padding: 6px 8px; }
+  textarea { resize: vertical; min-height: 34px; }
+  textarea.edit { font-size: 14px; min-height: 150px; }
+  ::placeholder { color: var(--ink38); }
+
+  .thread { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .msg { display: grid; gap: 2px; }
+  .msg .who { font: 500 11.5px var(--mono); color: var(--ink80); }
+  .msg.claude .who { color: var(--blue); }
+  .msg .at { font: 11px var(--mono); color: var(--ink38); margin-left: 6px; }
+  .msg p { margin: 0; white-space: pre-wrap; color: var(--ink80); }
+  form.comment { display: flex; gap: 6px; align-items: flex-end; }
+  .empty { color: var(--ink50); }
+
+  /* Channel previews, drawn at each feed's real column width so lines break where they will.
+     Bluesky is measured from bsky.app (dim theme, 2026-10-08). X and LinkedIn follow their feed layouts
+     but couldn't be checked live (X blocks automated browsers, LinkedIn needs a login). */
+  @font-face { font-family: "InterVariable"; src: url(/fonts/InterVariable.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
+  .pvscroll { overflow-x: auto; }
+  .pv { width: 600px; display: grid; grid-template-columns: auto minmax(0, 1fr); }
+  .pv .av { border-radius: 50%; display: block; object-fit: cover; }
+  .pv .head { display: flex; align-items: baseline; white-space: nowrap; overflow: hidden; min-width: 0; }
+  .pv .head > * { overflow: hidden; text-overflow: ellipsis; }
+  .pv .body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .pv .card { overflow: hidden; position: relative; }
+  .pv .card img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; }
+  .pv .noimg { aspect-ratio: 1.91 / 1; display: grid; place-items: center; font-size: 12px; opacity: .6; }
+  .pv .acts { display: flex; align-items: center; }
+  .pv .acts svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .pv-note { font: 11px/1.5 var(--mono); color: var(--ink38); max-width: 600px; }
+
+  /* Bluesky, dim theme. Avatar 42 at 18,9; text column 515 wide from x 70. */
+  .pv.bluesky { background: #151d28; color: #fff; font-family: InterVariable, -apple-system, system-ui, sans-serif;
+                border-block: 1px solid #2c3a4e; padding: 9px 15px 0 18px; column-gap: 10px; }
+  .pv.bluesky .av { width: 42px; height: 42px; }
+  .pv.bluesky .head { font-size: 15px; line-height: 17px; gap: 4px; }
+  .pv.bluesky .name { font-weight: 600; }
+  .pv.bluesky .sub { color: #abb8c9; }
+  .pv.bluesky .body { margin-top: 4px; font-size: 15px; line-height: 20px; }
+  .pv.bluesky .lk { color: #4d97ff; }
+  .pv.bluesky .card { margin-top: 10px; border: 1px solid #2c3a4e; border-radius: 12px; }
+  .pv.bluesky .cbody { border-top: 1px solid #2c3a4e; padding: 8px 12px; }
+  .pv.bluesky .ct { font-weight: 600; font-size: 15px; line-height: 20px; margin-bottom: 3px;
+                    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .pv.bluesky .cd { font-size: 13.1px; line-height: 17px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pv.bluesky .dom { margin-top: 7px; padding-top: 6px; border-top: 1px solid #2c3a4e; font-size: 11.3px; line-height: 15px;
+                     color: #abb8c9; display: flex; align-items: center; gap: 4px; }
+  .pv.bluesky .dom svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .pv.bluesky .acts { height: 28px; margin: 6px 0 0 -6px; color: #6f839f; }
+  .pv.bluesky .acts span { width: 109px; padding: 5px; }
+  .pv.bluesky .acts .r { width: 36px; padding: 5px; }
+  .pv.bluesky .acts .gap { flex: 1; }
+
+  /* X, dark ("Lights out"). 598 inside the column borders; avatar 40 + 8; text 518 wide.
+     X's own font (Chirp) isn't public, so this uses the Mac system font. */
+  .pv.x { background: #000; color: #e7e9ea; border: 1px solid #2f3336; padding: 12px 16px;
+          font-family: TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; column-gap: 8px; }
+  .pv.x .av { width: 40px; height: 40px; }
+  .pv.x .head { font-size: 15px; line-height: 20px; gap: 4px; }
+  .pv.x .name { font-weight: 700; }
+  .pv.x .sub { color: #71767b; }
+  .pv.x .body { font-size: 15px; line-height: 20px; }
+  .pv.x .lk { color: #1d9bf0; }
+  .pv.x .card { margin-top: 12px; border: 1px solid #2f3336; border-radius: 16px; }
+  .pv.x .xt { position: absolute; left: 12px; bottom: 12px; max-width: calc(100% - 24px); background: rgba(0,0,0,.77); color: #fff;
+              font-size: 13px; line-height: 16px; padding: 0 4px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pv.x .from { margin-top: 4px; font-size: 13px; line-height: 16px; color: #71767b; }
+  .pv.x .acts { margin-top: 12px; height: 20px; color: #71767b; justify-content: space-between; }
+  .pv.x .acts svg { width: 18.75px; height: 18.75px; }
+  .pv.x .acts .pair { display: flex; gap: 12px; }
+
+  /* LinkedIn desktop feed, dark. 555 wide; text cut at 3 lines with "...more". */
+  .pv.linkedin { width: 555px; background: #1b1f23; color: rgba(255,255,255,.9); border-radius: 8px; box-shadow: 0 0 0 1px rgba(140,140,140,.2);
+                 font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+                 grid-template-columns: minmax(0, 1fr); }
+  .pv.linkedin .top { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 8px; padding: 12px 16px 0; }
+  .pv.linkedin .av { width: 48px; height: 48px; }
+  .pv.linkedin .name { font-weight: 600; font-size: 14px; line-height: 20px; }
+  .pv.linkedin .sub { color: rgba(255,255,255,.6); font-size: 12px; line-height: 16px; }
+  .pv.linkedin .bodywrap { position: relative; margin: 8px 16px 0; }
+  .pv.linkedin .body { font-size: 14px; line-height: 20px; }
+  .pv.linkedin .bodywrap.clamped .body { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .pv.linkedin .more { display: none; position: absolute; right: 0; bottom: 0; padding-left: 24px; font-family: inherit; font-weight: 400; font-size: 14px; line-height: 20px; cursor: pointer;
+                       color: rgba(255,255,255,.6); background: linear-gradient(to right, rgba(27,31,35,0), #1b1f23 24px); border: 0; height: auto; }
+  .pv.linkedin .bodywrap.clamped.cut .more { display: block; }
+  .pv.linkedin .lk { color: #71b7fb; font-weight: 600; }
+  .pv.linkedin .card { margin-top: 8px; background: #38434f; }
+  .pv.linkedin .cbody { padding: 8px 12px; display: grid; }
+  .pv.linkedin .ct { font-weight: 600; font-size: 14px; line-height: 20px; }
+  .pv.linkedin .dom { color: rgba(255,255,255,.6); font-size: 12px; line-height: 16px; }
+  .pv.linkedin .acts { margin: 4px 12px 0; border-top: 1px solid rgba(255,255,255,.12); height: 48px; justify-content: space-around;
+                       color: rgba(255,255,255,.6); font-size: 14px; font-weight: 600; }
+  .pv.linkedin .acts span { display: inline-flex; gap: 6px; align-items: center; }
+  .pv.linkedin .acts svg { width: 20px; height: 20px; }
+
+  .pv.reddit { background: #0e1113; color: #d7dadc; border: 1px solid #343536; border-radius: 8px; padding: 12px; column-gap: 8px;
+               font-family: -apple-system, system-ui, sans-serif; }
+  .pv.reddit .av { width: 24px; height: 24px; }
+  .pv.reddit .sub { color: #818384; font-size: 12px; }
+  .pv.reddit .body { font-size: 14px; line-height: 21px; margin-top: 4px; }
+  .pv.reddit .lk { color: #4fbcff; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img id="mark" alt="" hidden>
+  <span class="word" id="word"></span><select id="switch" aria-label="Project" hidden></select><span class="sep">/</span><span class="crumb">post queue</span>
+  <span class="tally" id="tally"></span>
+</header>
+<main>
+  <p class="intro" id="next"></p>
+  <div id="batches"><p class="empty">Loading drafts...</p></div>
+</main>
+<script>
+const LIMITS = { x: 280, bluesky: 300 };
+const NAMES = { x: "X", bluesky: "Bluesky", linkedin: "LinkedIn", reddit: "Reddit", hn: "Hacker News" };
+// Who the previews post as: ~/.config/marketer/me.json, plus the project's LinkedIn headline.
+const ME = {
+  avatar: "/avatar.jpg",
+  bluesky: { name: "", handle: "" }, x: { name: "", handle: "" }, linkedin: { name: "", headline: "" }, reddit: { handle: "" },
+};
+// Which project this page shows: ?project=<slug>, or the only one in projects.toml.
+let PROJECT = new URLSearchParams(location.search).get("project") || "";
+const q = () => (PROJECT ? "project=" + encodeURIComponent(PROJECT) : "");
+let last = "", data = { batches: [] }, deferred = false;
+const open = {}; // card key -> "edit" | "skip" | "posted"
+const og = {};   // link -> card data from the server, or "loading"
+
+const key = (b, id) => `${b}/${id}`;
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function postText(d, text = d.text) {
+  return d.link && text.includes("{link}") ? text.replace("{link}", d.link) : text;
+}
+function charCount(d, text = d.text) {
+  // X counts any link as 23 characters; a Bluesky link rides in a link card.
+  const t = text.replace("{link}", d.channel === "x" ? "x".repeat(23) : (d.link || ""));
+  return [...t].length;
+}
+function countHTML(d, text) {
+  const n = charCount(d, text), lim = LIMITS[d.channel];
+  return `<span class="count ${lim && n > lim ? "over" : ""}">${n}${lim ? " / " + lim : ""}</span>`;
+}
+function find(b, id) { return data.batches.find(x => x.batch === b).drafts.find(x => x.id === id); }
+// Bluesky's composer shortens a link to host + the first 13 characters of the path, then "..."
+// (toShortUrl in bluesky-social/social-app; checked against live posts).
+function bskyShort(url) {
+  try {
+    const u = new URL(url), path = (u.pathname === "/" ? "" : u.pathname) + u.search + u.hash;
+    return u.host + (path.length > 15 ? path.slice(0, 13) + "..." : path);
+  } catch { return url; }
+}
+// X shows a link without the scheme and cuts it with an ellipsis.
+function xShort(url) {
+  const s = url.replace(/^https?:\/\/(www\.)?/, "");
+  return s.length > 26 ? s.slice(0, 25) + "…" : s;
+}
+// Escaped post text with {link} drawn the way the channel shows links.
+function bodyHTML(d, text, shorten) {
+  return esc(text).replace("{link}", d.link ? `<span class="lk">${esc(shorten(d.link))}</span>` : "");
+}
+
+function cardData(link) {
+  if (!link) return null;
+  if (og[link] === undefined) {
+    og[link] = "loading";
+    fetch("/api/og?" + q() + "&url=" + encodeURIComponent(link)).then(r => r.json())
+      .then(j => { og[link] = j; if (typing()) deferred = true; else render(); })
+      .catch(() => { og[link] = { error: "unreachable" }; });
+  }
+  return og[link] === "loading" ? null : og[link];
+}
+const ICON = {
+  reply: `<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>`,
+  repost: `<svg viewBox="0 0 24 24"><path d="M7 4 4 7l3 3M4 7h13a3 3 0 0 1 3 3v2M17 20l3-3-3-3M20 17H7a3 3 0 0 1-3-3v-2"/></svg>`,
+  like: `<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>`,
+  views: `<svg viewBox="0 0 24 24"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg>`,
+  bookmark: `<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>`,
+  share: `<svg viewBox="0 0 24 24"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6"/></svg>`,
+  more: `<svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3"/></svg>`,
+  globe: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>`,
+  send: `<svg viewBox="0 0 24 24"><path d="M21 3 3 10l7 3 3 7z"/></svg>`,
+  comment: `<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>`,
+};
+function linkCard(d, kind) {
+  const c = cardData(d.link);
+  if (!c) return `<div class="card"><div class="noimg">Loading link preview...</div></div>`;
+  if (c.error) return `<div class="card"><div class="noimg">No link preview (${esc(c.error)})</div></div>`;
+  const img = c.image ? `<img src="/api/ogimg?${q()}&url=${encodeURIComponent(c.image)}" alt="">` : "";
+  if (kind === "x") return `<div class="card">${img}<span class="xt">${esc(c.title)}</span></div><div class="from">From ${esc(c.domain)}</div>`;
+  if (kind === "linkedin") return `<div class="card">${img}<div class="cbody"><span class="ct">${esc(c.title)}</span><span class="dom">${esc(c.domain)}</span></div></div>`;
+  return `<div class="card">${img}<div class="cbody"><div class="ct">${esc(c.title)}</div><div class="cd">${esc(c.description)}</div>
+    <div class="dom">${ICON.globe}${esc(c.domain)}</div></div></div>`;
+}
+
+const NOTES = {
+  bluesky: "Measured from bsky.app (dim theme). Lines break where Bluesky will break them.",
+  x: "Follows X's feed layout, but X blocks automated browsers so it isn't checked live, and X's font (Chirp) isn't public. Lines can shift by a word. Open in X shows the real thing.",
+  linkedin: "Follows LinkedIn's desktop feed, not checked live (needs a login). Open in LinkedIn shows the real thing.",
+  reddit: "Rough sketch. Reddit varies by sub and app.",
+};
+function preview(d, text = d.text) {
+  const ch = d.channel, av = s => `<img class="av" src="${ME.avatar}" alt="" style="width:${s}px;height:${s}px">`;
+  if (ch === "bluesky") return `<div class="pv bluesky">${av(42)}<div>
+      <div class="head"><span class="name">${esc(ME.bluesky.name)}</span><span class="sub">${esc(ME.bluesky.handle)}</span><span class="sub">· 1m</span></div>
+      <p class="body">${bodyHTML(d, text, bskyShort)}</p>${d.link ? linkCard(d, "bluesky") : ""}
+      <div class="acts"><span>${ICON.reply}</span><span>${ICON.repost}</span><span>${ICON.like}</span><span class="gap"></span>
+        <span class="r">${ICON.bookmark}</span><span class="r">${ICON.share}</span><span class="r">${ICON.more}</span></div></div></div>`;
+  if (ch === "x") return `<div class="pv x">${av(40)}<div>
+      <div class="head"><span class="name">${esc(ME.x.name)}</span><span class="sub">${esc(ME.x.handle)}</span><span class="sub">· 1m</span></div>
+      <p class="body">${bodyHTML(d, text, xShort)}</p>${d.link ? linkCard(d, "x") : ""}
+      <div class="acts">${ICON.reply}${ICON.repost}${ICON.like}${ICON.views}<span class="pair">${ICON.bookmark}${ICON.share}</span></div></div></div>`;
+  if (ch === "linkedin") return `<div class="pv linkedin">
+      <div class="top">${av(48)}<div><div class="name">${esc(ME.linkedin.name)}</div>
+        <div class="sub">${esc(ME.linkedin.headline)}</div><div class="sub">1m · ${ICON.globe.replace("<svg", '<svg style="width:12px;height:12px;vertical-align:-2px"')}</div></div></div>
+      <div class="bodywrap clamped"><p class="body">${bodyHTML(d, text, u => u)}</p><button class="more" data-act="li-more">…more</button></div>
+      ${d.link ? linkCard(d, "linkedin") : ""}
+      <div class="acts"><span>${ICON.like}Like</span><span>${ICON.comment}Comment</span><span>${ICON.repost}Repost</span><span>${ICON.send}Send</span></div></div>`;
+  return `<div class="pv reddit">${av(24)}<div><div class="sub">${esc(ME.reddit.handle)} · 1m</div>
+      <p class="body">${bodyHTML(d, text, u => u)}</p></div></div>`;
+}
+// LinkedIn cuts a post at 3 lines; show "...more" only when it actually cut something.
+function fitPreviews(root = document) {
+  root.querySelectorAll(".pv.linkedin .bodywrap.clamped").forEach(w => {
+    const b = w.querySelector(".body");
+    w.classList.toggle("cut", b.scrollHeight > b.clientHeight + 1);
+  });
+}
+// The real composer, filled in. Nothing posts until Joel presses Post there.
+function composeURL(d) {
+  const t = d.text.includes("{link}") ? postText(d) : (d.link ? d.text + "\n\n" + d.link : d.text);
+  const q = encodeURIComponent(t);
+  if (d.channel === "x") return `https://x.com/intent/post?text=${q}`;
+  if (d.channel === "bluesky") return `https://bsky.app/intent/compose?text=${q}`;
+  if (d.channel === "linkedin") return `https://www.linkedin.com/feed/?shareActive=true&text=${q}`;
+  return "";
+}
+
+async function api(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: PROJECT, ...body }) });
+  if (!r.ok) { document.querySelector(".intro").textContent = "Error: " + ((await r.json()).error || r.statusText); return false; }
+  await refresh(true);
+  return true;
+}
+async function copy(btn, text) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+  catch { btn.textContent = "Copy failed"; }
+  setTimeout(() => (btn.textContent = btn.dataset.label), 1500);
+}
+
+function panel(b, d) {
+  const mode = open[key(b, d.id)], id = esc(`${b}-${d.id}`);
+  if (mode === "edit") return `<div class="panel">
+      <label for="e-${id}">Edit the post. Keep {link} where the link goes; the preview follows as you type.</label>
+      <textarea class="edit" id="e-${id}" data-live="edit">${esc(d.text)}</textarea>
+      <div class="inline"><button class="primary" data-act="save-edit">Save edit</button><button class="ghost" data-act="close">Cancel</button>${countHTML(d, d.text)}</div>
+    </div>`;
+  if (mode === "skip") return `<div class="panel">
+      <label for="s-${id}">Why skip it? Optional, and the reason teaches the next batch.</label>
+      <div class="inline"><input type="text" id="s-${id}" placeholder="e.g. too salesy, wrong angle for X">
+      <button class="primary" data-act="save-skip">Skip</button><button class="ghost" data-act="close">Cancel</button></div>
+    </div>`;
+  if (mode === "posted") return `<div class="panel">
+      <label for="p-${id}">Link to the live post. Optional; lets the memo pull likes and replies later.</label>
+      <div class="inline"><input type="text" id="p-${id}" value="${esc(d.post_url || "")}" placeholder="https://x.com/...">
+      <button class="primary" data-act="save-posted">Mark posted</button><button class="ghost" data-act="close">Cancel</button></div>
+    </div>`;
+  return "";
+}
+
+function row(b, d) {
+  const st = d.status || "draft";
+  const thread = (d.comments || []).map(c =>
+    `<div class="msg ${esc(c.who)}"><div><span class="who">${c.who === "claude" ? "claude" : "you"}</span><span class="at">${esc(c.at)}</span></div><p>${esc(c.text)}</p></div>`).join("");
+  const cardLink = d.link && !d.text.includes("{link}");
+  return `<article class="row ${esc(st)}" data-batch="${esc(b)}" data-id="${esc(d.id)}">
+    <div class="draft">
+      <div class="meta">
+        <span class="pill channel">${esc(NAMES[d.channel] || d.channel)}</span>
+        <span class="pill">${esc(d.angle)}</span>
+        ${d.post_on && (d.status || "draft") === "draft" ? `<span class="pill wait">post ${esc(d.post_on)}</span>` : ""}
+        <span class="pill ${esc(st)}">${esc(st)}${d.status_at && st !== "draft" ? " " + esc(d.status_at) : ""}</span>
+        ${d.claude_text !== undefined ? `<span class="pill">edited by you</span>` : ""}
+        ${d.needs_claude ? `<span class="pill wait">waiting on claude</span>` : ""}
+        ${countHTML(d)}
+      </div>
+      <p class="text">${esc(d.text).replace("{link}", d.link ? `<span class="lk">${esc(d.link)}</span>` : "")}</p>
+      <div class="facts">
+        ${cardLink ? `<span><b>Link card:</b> ${esc(d.link)}</span>` : ""}
+        ${d.post_url ? `<span><b>Live post:</b> <a href="${esc(d.post_url)}" target="_blank" rel="noopener">${esc(d.post_url)}</a></span>` : ""}
+        ${st === "skipped" && d.skip_reason ? `<span><b>Skipped because:</b> ${esc(d.skip_reason)}</span>` : ""}
+        ${d.sources ? `<span><b>Sources:</b> ${esc(d.sources)}</span>` : ""}
+        ${d.flags && d.flags !== "none" ? `<span><b>Decide:</b> ${esc(d.flags)}</span>` : ""}
+      </div>
+      <div class="actions">
+        ${composeURL(d) ? `<a class="btn primary" href="${esc(composeURL(d))}" target="_blank" rel="noopener">Open in ${esc(NAMES[d.channel])}</a>` : ""}
+        <button data-act="copy" data-label="Copy post">Copy post</button>
+        ${cardLink ? `<button data-act="copylink" data-label="Copy link">Copy link</button>` : ""}
+        <button data-act="edit">Edit</button>
+        <button data-act="posted" class="${st === "posted" ? "on posted" : ""}">${st === "posted" && !d.post_url ? "Posted (add link)" : "Posted"}</button>
+        <button data-act="skip" class="${st === "skipped" ? "on" : ""}">Skip</button>
+        ${st !== "draft" ? `<button class="ghost" data-act="draft">Back to draft</button>` : ""}
+      </div>
+      ${panel(b, d)}
+      <div class="thread">${thread}
+        <form class="comment"><textarea id="c-${esc(b)}-${esc(d.id)}" placeholder="Comment for Claude (Cmd+Enter to send)"></textarea><button>Send</button></form>
+      </div>
+    </div>
+    <aside class="preview"><span class="label">Preview</span><div class="pvscroll pvslot">${preview(d)}</div>
+      <span class="pv-note">${esc(NOTES[d.channel] || "")}</span></aside>
+  </article>`;
+}
+
+function render() {
+  const el = document.getElementById("batches");
+  const typed = {};
+  el.querySelectorAll("textarea, input[type=text]").forEach(t => { typed[t.id] = t.value; });
+  const all = data.batches.flatMap(b => b.drafts || []);
+  const n = s => all.filter(d => (d.status || "draft") === s).length;
+  const waiting = all.filter(d => d.needs_claude).length;
+  document.getElementById("tally").innerHTML =
+    `<span class="pill draft">${n("draft")} to review</span><span class="pill posted">${n("posted")} posted</span>` +
+    (waiting ? `<span class="pill wait">${waiting} waiting on claude</span>` : "");
+  // One plain next step, so nobody has to remember the process.
+  document.getElementById("next").innerHTML = waiting
+    ? `<b>Next step:</b> Claude owes you ${waiting} answer${waiting > 1 ? "s" : ""}. If nothing shows up in a minute, run <code>marketing ${esc(PROJECT)}</code> in a terminal.`
+    : n("draft")
+      ? `<b>Next step:</b> ${n("draft")} post${n("draft") > 1 ? "s are" : " is"} waiting. On each one, click <b>Open in</b> to post it, then click <b>Posted</b>. Don't like one? Click <b>Skip</b> and say why.`
+      : `<b>Next step:</b> you're all caught up. Run <code>marketing ${esc(PROJECT)}</code> in a terminal for a new batch.`;
+  if (!data.batches.length) { el.innerHTML = `<p class="empty">No drafts yet. Ask Claude to "draft posts".</p>`; return; }
+  el.innerHTML = data.batches.map(b => `<section class="batch">
+      <div class="batch-head"><span class="label">${esc(b.batch)}</span>${b.note ? `<p>${esc(b.note)}</p>` : ""}</div>
+      ${(b.drafts || []).map(d => row(b.batch, d)).join("")}</section>`).join("");
+  fitPreviews();
+  for (const [id, v] of Object.entries(typed)) {
+    const t = document.getElementById(id);
+    if (t) { t.value = v; if (t.dataset.live === "edit") livePreview(t); }
+  }
+}
+function livePreview(ta) {
+  const r = ta.closest(".row"), d = find(r.dataset.batch, r.dataset.id);
+  ta.closest(".panel").querySelector(".count").outerHTML = countHTML(d, ta.value);
+  r.querySelector(".pvslot").innerHTML = preview(d, ta.value);
+  fitPreviews(r);
+}
+
+function typing() {
+  const a = document.activeElement;
+  return a && a.matches("textarea, input[type=text]") && a.value.trim() !== "";
+}
+async function refresh(force) {
+  try {
+    const txt = await (await fetch("/api/drafts?" + q())).text();
+    if (!force && txt === last) return;
+    last = txt; data = JSON.parse(txt);
+    if (data.error) { document.getElementById("batches").innerHTML = `<p class="empty">${esc(data.error)}</p>`; return; }
+    if (!PROJECT) PROJECT = data.project;
+    // Don't redraw under someone mid-sentence; catch up when they leave the field.
+    if (typing() && !force) { deferred = true; return; }
+    render();
+  } catch { /* server restarting; try again next tick */ }
+}
+document.addEventListener("focusout", () => setTimeout(() => { if (deferred && !typing()) { deferred = false; render(); } }, 0));
+
+document.addEventListener("click", async e => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const r = btn.closest(".row"), b = r.dataset.batch, id = r.dataset.id, k = key(b, id), d = find(b, id);
+  const val = sel => (r.querySelector(sel)?.value ?? "").trim();
+  switch (btn.dataset.act) {
+    case "li-more": return btn.closest(".bodywrap").classList.remove("clamped");
+    case "copy": return copy(btn, postText(d));
+    case "copylink": return copy(btn, d.link);
+    case "edit": case "skip": case "posted":
+      open[k] = open[k] === btn.dataset.act ? undefined : btn.dataset.act; return render();
+    case "close": delete open[k]; return render();
+    case "save-edit":
+      if (await api("/api/edit", { batch: b, id, text: r.querySelector("textarea.edit").value })) { delete open[k]; render(); }
+      return;
+    case "save-skip":
+      if (await api("/api/status", { batch: b, id, status: "skipped", reason: val(".panel input") })) { delete open[k]; render(); }
+      return;
+    case "save-posted":
+      if (await api("/api/status", { batch: b, id, status: "posted", url: val(".panel input") })) { delete open[k]; render(); }
+      return;
+    case "draft": return api("/api/status", { batch: b, id, status: "draft" });
+  }
+});
+document.addEventListener("input", e => { if (e.target.dataset.live === "edit") livePreview(e.target); });
+async function send(form) {
+  const ta = form.querySelector("textarea"), r = form.closest(".row");
+  const text = ta.value.trim();
+  if (!text) return;
+  ta.value = "";
+  await api("/api/comment", { batch: r.dataset.batch, id: r.dataset.id, text });
+}
+document.addEventListener("submit", e => { e.preventDefault(); send(e.target); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && e.target.closest("form.comment")) { e.preventDefault(); send(e.target.form); }
+});
+async function setup() {
+  try {
+    const [me, list] = await Promise.all([fetch("/api/me").then(r => r.json()), fetch("/api/projects").then(r => r.json())]);
+    for (const ch of ["bluesky", "x", "linkedin", "reddit"]) Object.assign(ME[ch], me[ch] || {});
+    const projects = list.projects || [];
+    if (!PROJECT && projects.length === 1) PROJECT = projects[0].slug;
+    const p = projects.find(x => x.slug === PROJECT);
+    if (p) {
+      ME.linkedin.headline = p.headline || ME.linkedin.headline;
+      document.title = `${p.name} Post Queue`;
+      document.getElementById("word").textContent = p.name.toLowerCase();
+      if (p.mark) { const m = document.getElementById("mark"); m.src = "/mark.svg?" + q(); m.hidden = false; }
+    }
+    if (projects.length > 1) {
+      const sw = document.getElementById("switch");
+      sw.innerHTML = projects.map(x => `<option value="${esc(x.slug)}"${x.slug === PROJECT ? " selected" : ""}>${esc(x.name)}</option>`).join("");
+      sw.hidden = false;
+      document.getElementById("word").hidden = true;
+      sw.addEventListener("change", () => { location.search = "?project=" + encodeURIComponent(sw.value); });
+    }
+  } catch { /* previews fall back to blank names */ }
+  await refresh(true);
+  setInterval(refresh, 2000);
+}
+setup();
+</script>
+</body>
+</html>
