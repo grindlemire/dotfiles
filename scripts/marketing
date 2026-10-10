@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# marketing: open Claude Code on the next marketing step for a project.
+# Claude answers your comments on the post queue, opens it, or drafts a new
+# batch (the marketer skill, skills/marketer).
+#
+#   marketing [project]
+#
+# Projects are the tables in ~/.config/marketer/projects.toml. With no
+# argument: the project whose repo you're in, else the only project, else the
+# one you used last.
+set -euo pipefail
+
+config="${MARKETER_CONFIG:-$HOME/.config/marketer}"
+registry="$config/projects.toml"
+if [ ! -f "$registry" ]; then
+  echo "marketing: no $registry; run /marketer init in a project's repo first" >&2
+  exit 1
+fi
+
+# Prints "<slug>\t<repo>" for the chosen project, or an error on stderr.
+resolved="$(python3 - "$registry" "${1:-}" "$PWD" "$config/last" <<'EOF'
+import os, sys, tomllib
+registry, want, cwd, last_file = sys.argv[1:]
+with open(registry, "rb") as f:
+    projects = tomllib.load(f)
+repos = {slug: os.path.realpath(os.path.expanduser(p.get("repo", ""))) for slug, p in projects.items()}
+here = os.path.realpath(cwd)
+slug = want
+if not slug:
+    inside = [s for s, r in repos.items() if r and (here == r or here.startswith(r + os.sep))]
+    if inside:
+        slug = inside[0]
+    elif len(projects) == 1:
+        slug = next(iter(projects))
+    elif os.path.isfile(last_file):
+        slug = open(last_file).read().strip()
+if slug not in projects:
+    names = ", ".join(projects) or "none"
+    sys.exit(f"marketing: pick a project: marketing <{names}>" if not want else f"marketing: no project {want!r} (have: {names})")
+print(f"{slug}\t{repos[slug]}")
+EOF
+)"
+slug="${resolved%%$'\t'*}"
+repo="${resolved#*$'\t'}"
+
+echo "$slug" > "$config/last"
+cd "$repo"
+exec claude "/marketer next $slug"
