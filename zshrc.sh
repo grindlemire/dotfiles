@@ -23,7 +23,15 @@ Green='\033[0;32m'
 Color_Off='\033[0m'
 
 godir() {
-    cd $HOME/go/src/github.com/grindlemire/$@
+    c "$@"
+}
+
+# c [query]: jump to a repo under ~/code/<bucket>/<repo>; fzf picks when the
+# query matches more than one
+c() {
+    local root=$HOME/code dir
+    # No cd inside $(...): chpwd hooks (Ghostty's OSC 7) would print into the capture
+    dir=$(ls -d "$root"/*/*/ 2>/dev/null | sed "s|^$root/||; s|/\$||" | fzf --select-1 --exit-0 --query="$*") && cd "$root/$dir"
 }
 
 # Installed Apps and scripts added to PATH
