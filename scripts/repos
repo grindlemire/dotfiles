@@ -6,6 +6,8 @@
 #   repos <name>   only repos whose folder contains <name> (repos tui, repos alethi/)
 #   repos -p       only repos with a problem (flags starting with !)
 #   repos -f       fetch every repo's origin first (network)
+#   repos -g       include <repo>-github fallback clones (hidden by default,
+#                  except when flagged with a ! problem or named in <name>)
 #   repos -h       this help, plus what every flag means
 #
 # In a terminal the table is colored and followed by a short legend for the
@@ -169,12 +171,14 @@ fi
 
 problems_only=0
 fetch=0
-while getopts "pfh" opt; do
+fallbacks=0
+while getopts "pfgh" opt; do
   case $opt in
     p) problems_only=1 ;;
     f) fetch=1 ;;
+    g) fallbacks=1 ;;
     *)
-      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
       echo
       echo "Flags (! means a problem, the rest are information):"
       print_flags
@@ -196,6 +200,11 @@ matched=0
 [ -n "$repos_list" ] && matched=1
 
 rows="$(printf '%s\n' "$repos_list" | grep . | REPOS_FETCH="$fetch" xargs -P 8 -I{} "$0" --row {} | sort)"
+# Fallback clones are noise day to day. They still show when asked for (-g, or
+# a filter naming -github) or when flagged with a problem such as !unsynced,
+# which means a fix exists only on GitHub.
+case "$filter" in *-github*) fallbacks=1 ;; esac
+[ "$fallbacks" = 0 ] && rows="$(printf '%s\n' "$rows" | awk -F '\t' 'NF && ($1 !~ /-github$/ || $5 ~ /!/)')"
 [ "$problems_only" = 1 ] && rows="$(printf '%s\n' "$rows" | awk -F '\t' '$5 ~ /!/')"
 [ -n "$rows" ] && rows="$rows
 "
