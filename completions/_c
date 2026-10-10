@@ -1,0 +1,37 @@
+#compdef c godir repos
+
+# Tab completion for c, godir and repos: repo names under ~/code, each shown
+# with its bucket (gitstack -- alethi). repos also completes bucket/ filters
+# and its flags.
+
+_code_repos() {
+    local root=$HOME/code d
+    local -a repos buckets
+    for d in $root/*/*(/N); do
+        repos+=("${d:t}:${${d:h}:t}")
+    done
+    _describe -t repos 'repo' repos
+    if [[ $service == repos ]]; then
+        for d in $root/*(/N); do
+            buckets+=("${d:t}/:bucket")
+        done
+        _describe -t buckets 'bucket' buckets
+    fi
+}
+
+_c() {
+    case $service in
+        repos)
+            _arguments \
+                '-p[only repos with a problem]' \
+                '-f[fetch every repo first]' \
+                '-h[show help and what each flag means]' \
+                '1:repo:_code_repos'
+            ;;
+        *)
+            _code_repos
+            ;;
+    esac
+}
+
+_c "$@"

@@ -26,10 +26,17 @@ godir() {
     c "$@"
 }
 
-# c [query]: jump to a repo under ~/code/<bucket>/<repo>; fzf picks when the
-# query matches more than one
+# c [query]: jump to a repo under ~/code/<bucket>/<repo>. An exact repo name
+# (c gitstack) or bucket/repo (c alethi/gitstack) goes straight there;
+# anything else opens fzf filtered to the query, auto-picking a lone match.
 c() {
     local root=$HOME/code dir
+    local -a exact
+    if [[ -n $1 ]]; then
+        [[ $1 == */* && -d $root/$1 ]] && { cd "$root/$1"; return; }
+        exact=($root/*/$1(/N))
+        (( ${#exact} == 1 )) && { cd "$exact[1]"; return; }
+    fi
     # No cd inside $(...): chpwd hooks (Ghostty's OSC 7) would print into the capture
     dir=$(ls -d "$root"/*/*/ 2>/dev/null | sed "s|^$root/||; s|/\$||" | fzf --select-1 --exit-0 --query="$*") && cd "$root/$dir"
 }

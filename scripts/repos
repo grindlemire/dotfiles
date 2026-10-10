@@ -6,27 +6,54 @@
 #   repos <name>   only repos whose folder contains <name> (repos tui, repos alethi/)
 #   repos -p       only repos with a problem (flags starting with !)
 #   repos -f       fetch every repo's origin first (network)
+#   repos -h       this help, plus what every flag means
 #
-# Colored in a terminal; plain when piped or NO_COLOR is set.
-# REPOS_ROOT overrides ~/code. Flags:
-#   dirty:N unpushed:N wt:N    working tree, local-only commits, linked worktrees
-#   behind:N                   a -github fallback is N commits behind its primary
-#   personal-ns                company bucket, but origin is your personal namespace
-#   !unsynced                  fallback has commits the primary lacks: fetch the
-#                              primary, then gs repo pull-github if still flagged
-#   !orphan                    -github fallback with no primary next to it
-#   !company-code              company remote in personal/
-#   !not-oss                   your own or company remote in oss/
-#   !no-remote / !has-remote   personal/ needs a remote, scratch/ has none
-#   !personal-email            company bucket commits as your global email
-#   !company-email             personal bucket commits as a non-global email
-#   !wt-outside                linked worktree lives outside the repo folder
+# In a terminal the table is colored and followed by a short legend for the
+# flags it shows; piped output is the plain table. NO_COLOR turns color off.
+# REPOS_ROOT overrides ~/code.
 set -uo pipefail
+
+# flag_help: one plain-English line per flag, used by the legend and -h.
+# Flags starting with ! are problems; the rest are just information.
+flag_help() {
+  cat <<'EOF'
+dirty:N|N files changed but not committed
+unpushed:N|N commits saved only on this machine, not on the server yet
+wt:N|N extra worktrees (side-by-side checkouts) inside this repo
+behind:N|this GitHub backup copy is N commits old; git pull before using it
+personal-ns|company repo stored under your personal account, not alethi-dev
+!unsynced|this GitHub backup has commits GitStack lacks; run gs repo pull-github in the main copy
+!orphan|GitHub backup copy with no main copy next to it
+!company-code|company repo sitting in personal/; move it to alethi/ or mynqs/
+!not-oss|your own or company repo sitting in oss/
+!no-remote|personal/ repo with no server copy; push it somewhere or move it to scratch/
+!has-remote|scratch/ repo that has a server copy; move it to personal/
+!personal-email|company repo would commit with your personal email
+!company-email|personal repo would commit with a non-personal email
+!wt-outside|a worktree of this repo lives outside its folder
+EOF
+}
+
+# print_flags prints flag_help lines as an aligned list; with names given,
+# only those flags (matched on the part before ":").
+print_flags() {
+  flag_help | awk -F '|' -v want=" $* " -v color="$color" '
+    { name = $1; base = name; sub(/:.*/, "", base) }
+    want != "  " && index(want, " " base " ") == 0 { next }
+    {
+      label = color ? (base ~ /^!/ ? "\033[1;31m" : "\033[33m") name "\033[0m" : name
+      pad = ""; for (i = length(name); i < 16; i++) pad = pad " "
+      print "  " label pad $2
+    }'
+}
 
 ROOT="${REPOS_ROOT:-$HOME/code}"
 COMPANY_OWNERS=" alethi-dev alethi-co mynqs "
 PERSONAL_OWNER="grindlemire"
 GLOBAL_EMAIL="$(git config --global user.email 2>/dev/null || true)"
+
+color=0
+[ -t 1 ] && [ -z "${NO_COLOR:-}" ] && color=1
 
 problems_only=0
 fetch=0
@@ -34,14 +61,17 @@ while getopts "pfh" opt; do
   case $opt in
     p) problems_only=1 ;;
     f) fetch=1 ;;
-    *) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)
+      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      echo
+      echo "Flags (! means a problem, the rest are information):"
+      print_flags
+      exit 0
+      ;;
   esac
 done
 shift $((OPTIND - 1))
 filter="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
-
-color=0
-[ -t 1 ] && [ -z "${NO_COLOR:-}" ] && color=1
 
 # parse_remote sets host and slug (owner/repo) from a remote URL.
 parse_remote() {
@@ -203,3 +233,12 @@ END {
     print line
   }
 }'
+
+# Legend for the flags this table shows, only when a person is reading.
+if [ -t 1 ]; then
+  shown="$(printf '%s' "$rows" | cut -f5 | tr ' ' '\n' | sed 's/:.*//' | grep -v '^-*$' | sort -u | tr '\n' ' ')"
+  if [ -n "$shown" ]; then
+    echo
+    print_flags $shown
+  fi
+fi
