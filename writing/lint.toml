@@ -1,0 +1,77 @@
+# Mechanical slop checks, run by `lint` before the model reads a draft.
+#
+# Each rule is the regex subset of one slop.md entry, and that entry names
+# the rule in its `lint:` field. Add a rule only when the regex has no
+# reasonable innocent match: anything it catches gets rewritten. Patterns are
+# Python regexes; matching ignores case unless `case = true`.
+
+[[rule]]
+id = "em-dash"
+pattern = "—|–|(?<![-|])--(?![-|])"
+message = "Em dash. Use a period, comma, or parentheses."
+
+[[rule]]
+id = "promotional"
+pattern = "\\b(powerful|seamless(ly)?|robust|vibrant|game-changing)\\b"
+message = "Promotional adjective."
+
+[[rule]]
+id = "intensifier"
+pattern = "\\b(real|truly|simply|genuinely)\\b"
+message = "Intensifier (\"real\", \"truly\", \"simply\", \"genuinely\"). Cut it."
+
+[[rule]]
+id = "totalizer"
+pattern = "\\b(in one place|everything after it)\\b"
+message = "Vague totalizer. Name the place or the thing."
+
+[[rule]]
+id = "still-matters"
+pattern = "(?i:\\bstill matters\\b)|\\bThe \\w+ matters\\b"
+case = true
+message = "\"still matters\" / \"The X matters\". Say what the thing does and why."
+
+[[rule]]
+id = "relative-date"
+pattern = "\\b(this|last|next) (week|month|year)\\b|\\b(recently|yesterday)\\b"
+message = "Relative date. Give the month and year."
+
+[[rule]]
+id = "pseudo-cleft"
+pattern = "\\bWhat (changes|['’]s left|is left|they['’]re missing|matters) is\\b"
+message = "Pseudo-cleft reveal. State X directly."
+
+[[rule]]
+id = "follows-from"
+pattern = "\\bfollows from\\b"
+message = "\"X follows from Y\". Give the reason or cut it."
+
+[[rule]]
+id = "hard-part"
+pattern = "\\bthe hard part is\\b"
+message = "\"The hard part is\". Say who does what."
+
+[[rule]]
+id = "throat-clearing"
+pattern = "\\bhere['’]s the thing\\b|\\bthere['’]s a simple test\\b"
+message = "Throat-clearing. Delete the sentence."
+
+[[rule]]
+id = "naming"
+pattern = "\\bI['’]ll call\\b"
+message = "Naming sentence. Introduce the term in use."
+
+[[rule]]
+id = "announce"
+pattern = "\\bI['’]ll (start|come back|return)\\b|\\bmore on (this|that) (below|later)\\b"
+message = "Announcing what comes next. Start it instead."
+
+[[rule]]
+id = "self-reference"
+pattern = "\\b(see|shown|described|covered) below\\b"
+message = "Referring to the post from inside it. State the consequence."
+
+[[rule]]
+id = "how-to-read"
+pattern = "\\bhow to read this\\b"
+message = "\"How to read this post\" box. Remove it."

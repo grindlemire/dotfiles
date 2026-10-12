@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+"""lint: mechanical slop checks for markdown prose.
+
+  lint <file.md>... | -     check files (or stdin); exit 1 on any hit
+  lint --self-check         check lint.toml against slop.md
+
+Rules live in lint.toml next to this script (symlinks resolved). Frontmatter,
+fenced code, inline code, HTML comments and link targets are skipped.
+"""
+
+import re
+import sys
+import tomllib
+from pathlib import Path
+
+PACK = Path(__file__).resolve().parent
+
+
+def load_rules():
+    with open(PACK / "lint.toml", "rb") as f:
+        rules = tomllib.load(f).get("rule", [])
+    for r in rules:
+        flags = 0 if r.get("case") else re.IGNORECASE
+        r["re"] = re.compile(r["pattern"], flags)
+    return rules
+
+
+def prose_lines(text):
+    """Yields (line number, text) for each line a reader sees as prose."""
+    lines = text.split("\n")
+    i = 0
+    if lines and lines[0].strip() == "---":
+        for j in range(1, len(lines)):
+            if lines[j].strip() == "---":
+                i = j + 1
+                break
+    fence = None
+    comment = False
+    for n in range(i, len(lines)):
+        line = lines[n]
+        stripped = line.lstrip()
+        if fence:
+            if stripped.startswith(fence):
+                fence = None
+            continue
+        m = re.match(r"(```+|~~~+)", stripped)
+        if m:
+            fence = m.group(1)
+            continue
+        if comment:
+            end = line.find("-->")
+            if end < 0:
+                continue
+            line, comment = line[end + 3 :], False
+        line = re.sub(r"<!--.*?-->", "", line)
+        if "<!--" in line:
+            line, comment = line[: line.index("<!--")], True
+        line = re.sub(r"`[^`]*`", "", line)
+        line = re.sub(r"\]\([^)]*\)", "]", line)
+        line = re.sub(r"<https?://[^>]*>|https?://\S+", "", line)
+        yield n + 1, line
+
+
+def lint_text(name, text, rules):
+    hits = 0
+    for n, line in prose_lines(text):
+        for r in rules:
+            for m in r["re"].finditer(line):
+                print(f"{name}:{n}: {r['id']}: {r['message']} [{m.group(0)}]")
+                hits += 1
+    return hits
+
+
+def slop_fields():
+    """Yields (field, value, entry) for each indented field in slop.md."""
+    entry = ""
+    for line in (PACK / "slop.md").read_text().split("\n"):
+        if line.startswith("- **"):
+            entry = line[4 : line.index("**", 4)] if "**" in line[4:] else line
+        m = re.match(r"  (flagged|rewrite|from|lint): (.*)$", line)
+        if m:
+            yield m.group(1), m.group(2).strip(), entry
+
+
+def self_check(rules):
+    ids = {r["id"] for r in rules}
+    used = set()
+    problems = 0
+    for field, value, entry in slop_fields():
+        if field == "lint":
+            used.add(value)
+            if value not in ids:
+                print(f"slop.md: {entry}: lint id {value!r} is not in lint.toml")
+                problems += 1
+        if field == "rewrite":
+            text = value.strip('"')
+            for r in rules:
+                m = r["re"].search(text)
+                if m:
+                    print(f"slop.md: {entry}: accepted rewrite trips {r['id']} [{m.group(0)}]")
+                    problems += 1
+    for i in sorted(ids - used):
+        print(f"lint.toml: rule {i!r} is not named by any slop.md entry")
+        problems += 1
+    if not problems:
+        print(f"ok: {len(rules)} rules, all linked from slop.md; accepted rewrites lint clean")
+    return problems
+
+
+def main(argv):
+    rules = load_rules()
+    if argv == ["--self-check"]:
+        return 1 if self_check(rules) else 0
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 2
+    hits = 0
+    for a in argv:
+        if a == "-":
+            hits += lint_text("<stdin>", sys.stdin.read(), rules)
+        else:
+            hits += lint_text(a, Path(a).read_text(), rules)
+    return 1 if hits else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
