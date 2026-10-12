@@ -226,7 +226,7 @@ If a sentence runs past two lines, look for a break.
 
 ## Pass 4: De-AI and humanize
 
-This pass is non-negotiable. Apply every rule in the humanizer skill. The summary below covers the most critical rules; the full guide at `/Users/joelholsteen/.claude/skills/humanizer/SKILL.md` is authoritative for edge cases.
+This pass is non-negotiable. Apply every rule in the humanizer skill. The summary below covers the most critical rules; the full guide at `/Users/joelholsteen/.claude/skills/humanizer/SKILL.md` is authoritative for edge cases. Also check every paragraph against every entry in `/Users/joelholsteen/.claude/skills/blog-post/slop.md`, the patterns Joel has flagged in his own drafts; where it is stricter, it wins.
 
 ### 4a. Hard rules: zero tolerance
 
@@ -322,7 +322,7 @@ The four passes apply universally. The emphasis differs by genre.
 
 ### Blog post / essay
 
-- Apply Made to Stick more aggressively than memo writing: lead with unexpected truth, use one concrete story, name a person.
+- Apply Made to Stick more aggressively than memo writing: lead with unexpected truth, use one concrete story, name a person. For Joel's own posts, the story and any person come from him; never invent them (the `blog-post` skill governs).
 - Voice matters. Have an opinion. Vary rhythm.
 - The lead sentence does the heavy lifting. Hook with a fact, question, paradox, or vivid image; never with a vague summary.
 - The ending should arrive slightly sooner than the reader expects. Stop when you're ready to stop. The instinct to wrap with a summary paragraph almost always weakens the piece.

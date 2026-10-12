@@ -116,12 +116,9 @@ Trigger: "draft posts", "draft N posts", "draft a post about <topic>",
 
 Fail the draft and rewrite it if any of these hit:
 
-- An em dash anywhere.
-- "No X, Y" openers, "X did. Y didn't." flourishes, "not X, but Y" reveals.
-- An invented anecdote, feeling, or incident in Joel's voice. Use
-  `[ANECDOTE: what kind]` instead.
+- Any entry in `~/.claude/skills/blog-post/slop.md`, the single list of prose
+  patterns Joel has flagged. Check every post against every entry.
 - A number, stat, user count, or testimonial without a source in the brain.
-- Promotional adjectives (powerful, seamless, robust, game-changing).
 - Anything in `rejected.md`, or in the extra checks in `marketer.md`.
 
 Mechanical checks: after writing the batch JSON, `grep -c '—' <file>` must

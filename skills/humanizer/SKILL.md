@@ -34,6 +34,10 @@ When given text to humanize:
 4. **Maintain voice** - Match the intended tone (formal, casual, technical, etc.)
 5. **Add soul** - Don't just remove bad patterns; inject actual personality
 
+## Joel's flagged patterns
+
+`~/.claude/skills/blog-post/slop.md` lists every pattern Joel has flagged in his own drafts, each with the flagged line and the rewrite he accepted. It is part of this ruleset: read it and check every paragraph against every entry, alongside the sections below. Where it is stricter than a section here (colons, short dramatic sentences), it wins.
+
 ---
 
 ## PERSONALITY AND SOUL
@@ -50,13 +54,13 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 ### How to add voice:
 
-**Have opinions.** Don't just report facts - react to them. "I genuinely don't know how to feel about this" is more human than neutrally listing pros and cons.
+**Have opinions.** Don't just report facts - react to them. "I don't know how to feel about this yet" is more human than neutrally listing pros and cons.
 
-**Vary your rhythm.** Short punchy sentences. Then longer ones that take their time getting where they're going. Mix it up.
+**Vary your rhythm.** Mix sentence lengths, and let most sentences carry their reason ("because", "since"). A short sentence earns its place by stating something concrete; short sentences used for dramatic beats, alone or in runs, are slop (see §25).
 
-**Acknowledge complexity.** Real humans have mixed feelings. "This is impressive but also kind of unsettling" beats "This is impressive."
+**Acknowledge complexity.** People have mixed feelings. "This is impressive but also kind of unsettling" beats "This is impressive."
 
-**Use "I" when it fits.** First person isn't unprofessional - it's honest. "I keep coming back to..." or "Here's what gets me..." signals a real person thinking.
+**Use "I" when it fits.** First person isn't unprofessional - it's honest. "I keep coming back to..." or "I think..." signals a person thinking.
 
 **Let some mess in.** Perfect structure feels algorithmic. Tangents, asides, and half-formed thoughts are human.
 
@@ -66,7 +70,7 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 > The experiment produced interesting results. The agents generated 3 million lines of code. Some developers were impressed while others were skeptical. The implications remain unclear.
 
 ### After (has a pulse):
-> I genuinely don't know how to feel about this one. 3 million lines of code, generated while the humans presumably slept. Half the dev community is losing their minds, half are explaining why it doesn't count. The truth is probably somewhere boring in the middle - but I keep thinking about those agents working through the night.
+> I don't know how to feel about this one yet. 3 million lines of code, generated while the humans presumably slept. Half the dev community is losing their minds, and the other half is explaining why it doesn't count. I suspect the answer is somewhere boring in the middle, but I keep thinking about those agents working through the night.
 
 ---
 
@@ -259,7 +263,7 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 **HARD RULE: Never use em dashes (—) in output. Zero tolerance. No exceptions.**
 
-Em dashes are the single most reliable tell of AI-generated text. LLMs reach for them constantly to inject fake drama or cram in asides. Every em dash must be rewritten using normal punctuation: commas, periods, parentheses, colons, or just restructuring the sentence.
+Em dashes are the single most reliable tell of AI-generated text. LLMs reach for them constantly to inject fake drama or cram in asides. Every em dash must be rewritten using commas, periods, parentheses, or a restructured sentence. A colon is not a replacement (see the colon test below).
 
 **MANDATORY mechanical scan before delivery.** Reading by eye misses em dashes — they look like long hyphens and the brain glides over them, especially mid-sentence or surrounded by short words. You MUST run an explicit character-by-character pass on the final output before returning it. Do not rely on having "noticed them while editing." Use Grep on the output with the pattern `—|–|--` (em dash, en dash, double hyphen) and confirm zero matches. If the output is in conversation rather than a file, scan it as a string. **A single missed em dash is a failure of this skill.** The user has flagged this repeatedly — treat it as the single highest-priority check, ahead of every other rule.
 
@@ -729,6 +733,7 @@ Run through this before declaring text humanized. The em dash check is MECHANICA
 - Narrator-from-a-distance ("Nobody designed this")? Put the reader in the scene.
 - Meta-commentary ("The rest of this essay...")? Delete.
 - Any lazy extremes (every, always, never)? Replace with specifics.
+- Every entry in `~/.claude/skills/blog-post/slop.md` checked against every paragraph?
 
 ## Self-Scoring (Optional)
 
