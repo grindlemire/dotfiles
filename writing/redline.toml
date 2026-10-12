@@ -1,0 +1,22 @@
+# redline actions: the buttons redline shows on a selection. Linked to
+# ~/.config/redline/actions.toml by skills/install.sh. Each action names the
+# skill that does the work; the skill holds the instructions.
+
+[[action]]
+name = "slop"
+label = "Slop"
+key = "mod+shift+s"
+color = "#7c3aed"
+send = "batch"
+note = "optional"
+skill = "slop"
+
+[[action]]
+name = "polish"
+label = "Polish"
+key = "mod+shift+p"
+color = "#0e7490"
+send = "now"
+note = "none"
+revert = true
+skill = "polish"

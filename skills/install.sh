@@ -53,6 +53,26 @@ for skill_path in "$SRC_DIR"/*/; do
   done
 done
 
+# The writing voice pack (dotfiles/writing): skills read it at
+# ~/.config/writing, and redline reads its actions from
+# ~/.config/redline/actions.toml.
+link_config() {
+  local src="$1"
+  local target="$2"
+  mkdir -p "$(dirname "$target")"
+  if [ -L "$target" ]; then
+    rm "$target"
+  elif [ -e "$target" ]; then
+    echo "skip: $target exists and is not a symlink (remove it manually to replace)"
+    return
+  fi
+  ln -s "$src" "$target"
+  echo "linked: $target"
+}
+WRITING_DIR="$(cd "$SRC_DIR/../writing" && pwd)"
+link_config "$WRITING_DIR" "${HOME}/.config/writing"
+link_config "$WRITING_DIR/redline.toml" "${HOME}/.config/redline/actions.toml"
+
 # Trial plugins — only for the test sandboxes, never the regular ~/.claude or
 # ~/.codex installs. Installed from the author's own marketplace so they track
 # upstream HEAD (the claude-plugins-official entry pins an old commit).
