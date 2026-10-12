@@ -116,8 +116,8 @@ Trigger: "draft posts", "draft N posts", "draft a post about <topic>",
 
 Fail the draft and rewrite it if any of these hit:
 
-- Any entry in `~/.claude/skills/blog-post/slop.md`, the single list of prose
-  patterns Joel has flagged. Check every post against every entry.
+- Any hit from the `slop` skill's check, run on every post: the lint plus
+  every pattern Joel has flagged.
 - A number, stat, user count, or testimonial without a source in the brain.
 - Anything in `rejected.md`, or in the extra checks in `marketer.md`.
 

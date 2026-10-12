@@ -34,9 +34,14 @@ When given text to humanize:
 4. **Maintain voice** - Match the intended tone (formal, casual, technical, etc.)
 5. **Add soul** - Don't just remove bad patterns; inject actual personality
 
-## Joel's flagged patterns
+## The voice pack
 
-`~/.claude/skills/blog-post/slop.md` lists every pattern Joel has flagged in his own drafts, each with the flagged line and the rewrite he accepted. It is part of this ruleset: read it and check every paragraph against every entry, alongside the sections below. Where it is stricter than a section here (colons, short dramatic sentences), it wins.
+When `~/.config/writing/` exists, it extends this ruleset and wins wherever it is stricter or disagrees:
+
+- `voice.md` is the voice to write in, including the patterns below that Joel keeps on purpose.
+- `slop.md` lists every pattern Joel has flagged in his own drafts. Finish by running the `slop` skill's check on your output and fixing every hit (skip this when the `slop` skill's pass called you; it runs the check next).
+
+Without the pack, these sections are the whole ruleset.
 
 ---
 
@@ -733,7 +738,7 @@ Run through this before declaring text humanized. The em dash check is MECHANICA
 - Narrator-from-a-distance ("Nobody designed this")? Put the reader in the scene.
 - Meta-commentary ("The rest of this essay...")? Delete.
 - Any lazy extremes (every, always, never)? Replace with specifics.
-- Every entry in `~/.claude/skills/blog-post/slop.md` checked against every paragraph?
+- With a voice pack: the `slop` skill's check run on the output, and every hit fixed?
 
 ## Self-Scoring (Optional)
 

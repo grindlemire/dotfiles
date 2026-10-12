@@ -226,7 +226,7 @@ If a sentence runs past two lines, look for a break.
 
 ## Pass 4: De-AI and humanize
 
-This pass is non-negotiable. Apply every rule in the humanizer skill. The summary below covers the most critical rules; the full guide at `/Users/joelholsteen/.claude/skills/humanizer/SKILL.md` is authoritative for edge cases. Also check every paragraph against every entry in `/Users/joelholsteen/.claude/skills/blog-post/slop.md`, the patterns Joel has flagged in his own drafts; where it is stricter, it wins.
+This pass is non-negotiable. Apply every rule in the humanizer skill. The summary below covers the most critical rules; the full guide at `/Users/joelholsteen/.claude/skills/humanizer/SKILL.md` is authoritative for edge cases. Then run the `slop` skill's pass, which adds the mechanical lint and the patterns Joel has flagged in his own drafts; where it is stricter, it wins.
 
 ### 4a. Hard rules: zero tolerance
 

@@ -1,6 +1,6 @@
 ---
 name: blog-post
-description: Use when drafting, revising, or slop-checking a blog post or essay in Joel's voice (alethi.dev, gitstack.sh), or when Joel flags a slop pattern in a draft and it should be recorded.
+description: Use when drafting or revising a blog post or essay in Joel's voice (alethi.dev, gitstack.sh), from the first interview through his review in redline.
 ---
 
 # Blog post
@@ -34,54 +34,22 @@ Done when Joel has confirmed the spine sentence and an outline.
 
 ## 2. Draft
 
-Write toward these targets:
+Write in the voice in `~/.config/writing/voice.md`, toward these targets
+for the post's shape:
 
-- First person for opinions. Observations attributed to what Joel has seen or
-  heard, so contested claims read as reports, not demands for agreement.
-- Medium-length sentences that carry their reason ("because", "since").
-  Commas and periods do the joining. Pivots open with "However," or "That
-  said," so turns stay conversational.
 - One or two bold thesis sentences per section, each standing on terms the
   post has already set up.
-- Concrete specifics: the command, the risk, the number Joel gave you.
-  Incidental vendors stay generic ("internal docs").
 - Sections are ordered by dependency, and the order shows in the content
   itself. A section ends on the need the next one answers; the post never
   announces what's coming.
 - A system is defined before its parts; parts get bold run-in leads.
 - Limits get their own plain section.
 - The ending is a concrete claim that closes a loop the opening started.
-- Joel loves the craft of code and has written it long before agents. His own
-  projects are never described as agent-written, and former employers stay
-  unnamed.
 
 ## 3. Slop pass
 
-Run the `humanizer` skill over the draft, then read [`slop.md`](slop.md) and
-check every paragraph against every entry. The humanizer catches general AI
-patterns (meta-commentary, Wh- starters, metronomic parallel sentences)
-that Joel hasn't had to flag yet. `slop.md` wins wherever the two disagree.
-
-Joel overrides the humanizer on these, so keep them when they appear:
-
-- A question that opens a section by asking what the reader is wondering,
-  answered by the next sentence in full (never a "Because…" fragment),
-  despite §33.
-- Bold run-in leads on list items and on a system's parts, despite §15.
-- Third person in scenes. §26 and §27 suggest "you" to put the reader in the
-  scene; Joel's openings don't.
-
-Then make the checks neither file covers:
-
-- Every pronoun has one clear referent. When "it" could mean two nouns,
-  name the one you mean.
-- No relative dates ("this week", "recently"). Posts are read long after
-  they're written, so give the month and year.
-- No phrase used more than twice; repetition past that reads as a tic.
-- Grep for em dashes, colons, and the words in `slop.md`.
-
-Done when the humanizer pass is complete, every `slop.md` entry has been
-checked against every paragraph, and each hit is rewritten, not trimmed.
+Run the `slop` skill's pass over the draft. Done when that pass's own
+completion check holds: lint clean, and a second check finds nothing.
 
 ## 4. Fact pass
 
@@ -111,18 +79,14 @@ thread with `redline reply <id> -m "<what changed>" --resolve` (no
 lines in any "Joel edited" entry before touching them: those are his hand
 edits and his voice.
 
-A `[slop]` thread is Joel flagging a phrase as slop. Rewrite the whole
-passage it sits in, not just the phrase, against the humanizer rules and
-`slop.md`. Reply with the before and after, record the pattern as step 6
-says, then resolve. If he reopens it, the rewrite missed: fix it and update
-that `slop.md` entry, so every recorded rewrite is one he accepted. A plain
-comment that names a slop pattern also goes through step 6.
+A thread marked with an action (`[slop]`, `[polish]`) names the skill that
+handles it in the batch header; follow that skill's steps for the thread.
 
-## 6. Record what Joel flags
+## 6. Keep what Joel flags
 
-When Joel flags a pattern as slop, add it to `slop.md` in the matching
-section, with the flagged line and the rewrite he accepted. A flag that isn't
-recorded will be repeated in the next post.
+Every slop pattern Joel flags goes through the `slop` skill's Record step as
+it comes up, and its Commit step when he says the post is done. A flag that
+isn't recorded will be repeated in the next post.
 
 ## alethi.dev mechanics
 
