@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""evals/run: does the slop check still catch what Joel flagged?
+
+  evals/run [--only TEXT] [--limit N] [-j N] [--model M]
+
+Cases come from slop.md. Each `flagged:` line must be reported as a hit on
+its own entry, by lint or by the slop skill's Check step run through
+`claude -p`. Each `rewrite:` line must get no hit on any slop.md entry, so
+the check doesn't grow strict enough to flag prose Joel accepted. Every run
+costs tokens: narrow it with --only while iterating on one entry.
+"""
+
+import argparse
+import difflib
+import json
+import re
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+PACK = Path(__file__).resolve().parent.parent
+
+PROMPT = """Use the slop skill's Check step on the text between the markers. \
+Skip its lint step; the caller has already run lint. Do not rewrite anything.
+Answer with JSON only, no prose and no code fence:
+{{"hits": [{{"entry": "<entry name exactly as bolded in slop.md, or the humanizer pattern name>", "quote": "<exact text>"}}]}}
+An empty list means no slop.
+<<<
+{text}
+>>>"""
+
+
+def cases():
+    entry, lint_id = "", {}
+    out = []
+    for line in (PACK / "slop.md").read_text().split("\n"):
+        if line.startswith("- **"):
+            end = line.find("**", 4)
+            entry = line[4:end] if end > 0 else line[2:]
+        m = re.match(r"  (flagged|rewrite|lint): (.*)$", line)
+        if not m:
+            continue
+        kind, value = m.group(1), m.group(2).strip()
+        if kind == "lint":
+            lint_id[entry] = value
+        else:
+            out.append({"entry": entry, "kind": kind, "text": value.strip('"')})
+    for c in out:
+        c["lint"] = lint_id.get(c["entry"])
+    return out
+
+
+def norm(name):
+    return re.sub(r"[^a-z0-9 ]", "", name.lower()).strip()
+
+
+def same_entry(a, b):
+    a, b = norm(a), norm(b)
+    return a == b or a in b or b in a or difflib.SequenceMatcher(None, a, b).ratio() > 0.75
+
+
+def lint_ids(text):
+    r = subprocess.run([str(PACK / "lint"), "-"], input=text, capture_output=True, text=True)
+    return {line.split(": ")[1] for line in r.stdout.splitlines() if ": " in line}
+
+
+def model_hits(text, model):
+    cmd = ["claude", "-p", PROMPT.format(text=text), "--allowedTools", "Read Grep Glob Skill"]
+    if model:
+        cmd += ["--model", model]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    raw = r.stdout.strip()
+    m = re.search(r"\{.*\}", raw, re.S)
+    if not m:
+        raise ValueError(f"no JSON in reply: {raw[:200]!r} {r.stderr[:200]!r}")
+    return [h.get("entry", "") for h in json.loads(m.group(0)).get("hits", [])]
+
+
+def run_case(c, entries, model):
+    try:
+        lint = lint_ids(c["text"])
+        hits = model_hits(c["text"], model)
+    except Exception as e:  # report and keep going
+        return c, False, f"error: {e}"
+    if c["kind"] == "flagged":
+        ok = (c["lint"] in lint) or any(same_entry(h, c["entry"]) for h in hits)
+        got = ", ".join(hits) or "-"
+    else:
+        slop_hits = [h for h in hits if any(same_entry(h, e) for e in entries)]
+        slop_hits += [f"lint:{i}" for i in lint]
+        ok = not slop_hits
+        got = ", ".join(slop_hits) or "-"
+    return c, ok, got
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--only", help="only entries whose name contains TEXT")
+    ap.add_argument("--limit", type=int)
+    ap.add_argument("-j", type=int, default=4)
+    ap.add_argument("--model")
+    args = ap.parse_args()
+
+    all_cases = cases()
+    entries = sorted({c["entry"] for c in all_cases})
+    todo = [c for c in all_cases if not args.only or args.only.lower() in c["entry"].lower()]
+    if args.limit:
+        todo = todo[: args.limit]
+    if not todo:
+        print("no cases match")
+        return 2
+
+    with ThreadPoolExecutor(args.j) as pool:
+        results = list(pool.map(lambda c: run_case(c, entries, args.model), todo))
+
+    failed = [r for r in results if not r[1]]
+    for c, ok, got in results:
+        mark = "ok  " if ok else "MISS" if c["kind"] == "flagged" else "FALSE"
+        print(f"{mark} {c['kind']:8} {c['entry'][:40]:40} {c['text'][:50]!r:54} {got}")
+    print(f"\n{len(results) - len(failed)}/{len(results)} passed")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
