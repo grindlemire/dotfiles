@@ -8,6 +8,9 @@
 # A path is deleted (recursively, if a directory) only when it is:
 #   - inside Claude's temp area, /private/tmp/claude-<uid>/ (session
 #     scratchpads), but not that directory itself
+#   - inside macOS's per-user temp dir (getconf DARWIN_USER_TEMP_DIR, the
+#     $TMPDIR of commands run outside the sandbox), but not that directory
+#     itself; macOS treats everything there as disposable
 #   - inside a git repo, not tracked, and either an image (png, jpg, jpeg,
 #     gif, webp) or inside a .playwright-mcp/ or dev/scratch/ directory
 # Anything else is refused and left alone. Exits 1 if any path was refused.
@@ -15,11 +18,15 @@ set -uo pipefail
 shopt -s nocasematch
 
 tmp_root="$(cd "/private/tmp/claude-$(id -u)" 2>/dev/null && pwd -P)"
+user_tmp="$(d="$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null)" && [[ -n "$d" ]] && cd "$d" 2>/dev/null && pwd -P)"
 
 # allowed reports whether real, a resolved absolute path, may be deleted.
 allowed() {
   local real="$1" dir top rel
   if [[ -n "$tmp_root" && "$real" == "$tmp_root"/* ]]; then
+    return 0
+  fi
+  if [[ -n "$user_tmp" && "$real" == "$user_tmp"/* ]]; then
     return 0
   fi
   if [[ -d "$real" ]]; then dir="$real"; else dir="$(dirname "$real")"; fi
@@ -40,7 +47,7 @@ allowed() {
 }
 
 if [[ $# -eq 0 ]]; then
-  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 fi
 
