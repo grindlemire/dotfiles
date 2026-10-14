@@ -106,10 +106,10 @@ Trigger: "draft posts", "draft N posts", "draft a post about <topic>",
 6. **Channel shape:**
    - X: under 280 characters, or a thread of at most 4 posts.
    - Bluesky: under 300 characters.
-   - LinkedIn: up to 3,000 characters (LinkedIn's cap, about 500 words),
-     short paragraphs. Joel is fine with long ones (2026-10-14); let the idea
-     set the length. Past the cap means a LinkedIn article, so ask
-     first. The link rides in the
+   - LinkedIn: up to about 400 words, short paragraphs; let the idea set
+     the length (Joel, 2026-10-14). That leaves headroom under LinkedIn's
+     3,000-character cap (about 500 words). Longer means a LinkedIn
+     article, so ask first. The link rides in the
      preview card, not the text (leave `{link}` out). Joel pastes it, waits
      for the card, then deletes the URL text (2026-10-10, he asked to hide it).
    - Reddit: a helpful answer to the thread's actual question first; the
