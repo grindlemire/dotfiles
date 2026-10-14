@@ -94,7 +94,9 @@ Trigger: "draft posts", "draft N posts", "draft a post about <topic>",
 5. **Close with one ask** and the right link:
    - X and Bluesky: a soft ask only ("Give it a try", "Here's how it works",
      or just the link). Joel finds "Try it" salesy on short posts.
-   - LinkedIn: a plain direct ask is fine.
+   - LinkedIn: no ask line. End on the post's last idea; the link card
+     does the asking (Joel, 2026-10-14: "Try it on your next branch"
+     "sounds weird in a linked in post").
    - Which pages to link (trying it vs seeing it) is in `marketer.md`.
    Every link carries UTM tags:
    `?utm_source=<x|bluesky|linkedin|reddit>&utm_medium=social&utm_campaign=<angle>&utm_content=<YYYYMMDD>-<n>`
