@@ -426,12 +426,28 @@ function render() {
   if (!data.batches.length) { el.innerHTML = `<p class="empty">No drafts yet. Ask Claude to "draft posts".</p>`; return; }
   el.innerHTML = data.batches.map(b => `<section class="batch">
       <div class="batch-head"><span class="label">${esc(b.batch)}</span>${b.note ? `<p>${esc(b.note)}</p>` : ""}</div>
-      ${(b.drafts || []).map(d => row(b.batch, d)).join("")}</section>`).join("");
+      ${byPostDay(b).map(d => row(b.batch, d)).join("")}</section>`).join("");
   fitPreviews();
   for (const [id, v] of Object.entries(typed)) {
     const t = document.getElementById(id);
     if (t) { t.value = v; if (t.dataset.live === "edit") livePreview(t); }
   }
+}
+// Drafts still to post come first, soonest post_on day first; posted and
+// skipped ones follow in file order. post_on ("Tue Oct 13, morning") has no
+// year, so it takes the batch's year, rolling into the next year when that
+// would land before the batch was drafted.
+function byPostDay(b) {
+  const drafted = new Date(b.batch + "T00:00");
+  const day = d => {
+    const t = new Date(`${(d.post_on || "").split(",")[0]} ${drafted.getFullYear()}`);
+    if (isNaN(t)) return Infinity;
+    if (t < drafted) t.setFullYear(t.getFullYear() + 1);
+    return t.getTime();
+  };
+  const todo = d => (d.status || "draft") === "draft";
+  const drafts = b.drafts || [];
+  return [...drafts.filter(todo).sort((x, y) => day(x) - day(y)), ...drafts.filter(d => !todo(d))];
 }
 function livePreview(ta) {
   const r = ta.closest(".row"), d = find(r.dataset.batch, r.dataset.id);

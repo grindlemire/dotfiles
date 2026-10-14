@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Opens the review page in a normal browser tab. Arc sends links from other
+# apps (`open`) to Little Arc, a one-tab window where "Open in <channel>"
+# replaces the review page instead of opening beside it, so with Arc this
+# asks for a real tab in Arc's front window. Usage: open-page <url>
+set -eu
+url=$1
+if [ -d /Applications/Arc.app ] &&
+	osascript -e 'on run {u}' -e 'tell application "Arc"' -e 'if (count of windows) is 0 then make new window' \
+		-e 'tell front window to make new tab with properties {URL:u}' -e 'activate' -e 'end tell' -e 'end run' "$url" >/dev/null 2>&1; then
+	exit 0
+fi
+open "$url"

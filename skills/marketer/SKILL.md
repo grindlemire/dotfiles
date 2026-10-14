@@ -55,7 +55,7 @@ action in a sentence or two. No menus, no recap of the system.
 | State | Do |
 |---|---|
 | Any draft has `needs_claude` | Handle them (see "Catch up first"), then go on down this table. |
-| Any draft is still `draft` | Open the page for him (`open "http://127.0.0.1:8787/?project=<slug>"`, sandbox disabled). Say: "N posts are waiting. Click Open in X/Bluesky/LinkedIn, post it, then click Posted. Skip any you don't like and say why." Then stay and respond to his events. |
+| Any draft is still `draft` | Open the page for him (`bash ~/.claude/skills/marketer/review/open-page "http://127.0.0.1:8787/?project=<slug>"`, sandbox disabled; plain `open` lands in Little Arc, where Open in replaces the page). Say: "N posts are waiting. Click Open in X/Bluesky/LinkedIn, post it, then click Posted. Skip any you don't like and say why." Then stay and respond to his events. |
 | Every draft is posted or skipped (or none exist) | Draft a new batch (Mode: draft posts), open the page, and say the same line as above. |
 
 3. If posted drafts exist and it's been a week since the last summary, say
