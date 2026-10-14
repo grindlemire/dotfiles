@@ -10,7 +10,6 @@ under it are optional:
 - `flagged:` a line Joel flagged, exactly as written (repeatable).
 - `rewrite:` the rewrite he accepted, exactly as written. Pairs with the
   `flagged:` line above it.
-- `from:` the post and month it came from.
 - `lint:` the id of the `lint.toml` rule that catches it mechanically.
 
 The evals turn each `flagged:` line into a case the check must catch, and
@@ -45,6 +44,10 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **"still matters"**, **"The X matters"**. Say what the thing does and why.
   flagged: "The visual layer still matters"
   lint: still-matters
+- **Vague verdicts** like "weren't good enough". Say what the thing fails
+  to deliver.
+  flagged: "I realized multi-thousand-line PRs weren't good enough."
+  rewrite: "I realized multi-thousand-line PRs weren't leading to sustainable, reliable software."
 - **Overclaiming superlatives.**
   flagged: "the most trusted machine an organization owns"
   rewrite: "one of the most trusted machines"
@@ -71,9 +74,13 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 ## Constructions
 
 - **Colons as emphasis separators.** A colon may introduce a list ("comes
-  down to two things: X, and Y"). Nowhere else.
+  down to two things: X, and Y"). Nowhere else, including a colon that sets
+  up a restatement of the noun before it. Joel: "slop basically every time
+  we use a colon like that."
   flagged: "The shape is the same either way: root inside, and a gated network."
   rewrite: "Either way the agent gets root inside the machine and a gated network around it."
+  flagged: "What helped most was having the agent build each feature as a stack: a few small reviews in order, each doing one thing."
+  rewrite: "I have the agent build each feature as a stack of small reviews that go in order and each do one thing."
 - **"What changes is X" / "What's left is X" / "What they're missing is X".**
   Pseudo-cleft reveals. Fold into the sentence before or state X directly.
   rewrite: "They just haven't put those pieces together this way yet."

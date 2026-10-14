@@ -60,14 +60,12 @@ A plain comment that names a pattern as slop goes through these steps too.
 1. Find the entry that already covers the pattern. When one does, add a
    `flagged:` and `rewrite:` pair to it. Otherwise add an entry, in the
    section it fits, in the shape the file's header describes.
-2. Fill `from:` with the post's site and slug and the month
-   (`alethi.dev/build-for-leverage, 2026-10`).
-3. When a regex catches the pattern with no innocent match, add a rule to
+2. When a regex catches the pattern with no innocent match, add a rule to
    `lint.toml` and name it in the entry's `lint:` field. Run the new rule
    over Joel's published posts (alethi.dev `content/posts/`, gitstack.sh
    `marketing/content/blog/`): a hit in prose he accepted means the rule is
    too broad, so leave it to the check instead.
-4. Run `~/.config/writing/lint --self-check`. Done when it prints `ok`.
+3. Run `~/.config/writing/lint --self-check`. Done when it prints `ok`.
 
 ## Commit
 
