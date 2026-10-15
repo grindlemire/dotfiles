@@ -63,21 +63,26 @@ Give Joel the draft with a short list of **lines where you speak for him**:
 any sentence about his experience, opinions, or the people he talks to that
 he didn't say in the session. Those are the first things he checks.
 
-Joel reviews on the rendered page with redline, which overlays comments and
-in-place markdown editing on the site's dev server
-(`~/code/personal/redline`, README there). Start it in the background from
-the repo or worktree holding the post, and give Joel the URL it prints plus
-the post path:
+Joel reviews on the rendered page with redline (`~/code/personal/redline`,
+README there). redline service runs at login and works out the post's repo
+and worktree from the page itself. Nothing needs starting or registering.
 
-- gitstack.sh: `redline serve --root . --upstream <sandbox URL from mage sandbox status> --content marketing/content`
-- alethi.dev: `redline serve --root . --cmd 'ALETHI_DEV=1 PORT=18451 go run ./cmd/site' --upstream http://localhost:18451 --content content`
-
-Then loop until Joel says the post is done: run `redline wait` as a
-background command; when it prints a batch, make each change, answer every
-thread with `redline reply <id> -m "<what changed>" --resolve` (no
-`--resolve` when you need to ask him something), and wait again. Re-read the
-lines in any "Joel edited" entry before touching them: those are his hand
-edits and his voice.
+1. From the worktree holding the post, run `redline open <post path>`. It
+   prints the checkout redline edits. If it says the service is not
+   running, ask Joel to start it with `redline service`.
+2. Start the worktree's dev server in the background if it isn't up:
+   - gitstack.sh: `mage sandbox up` (`mage sandbox status` prints its URL).
+   - alethi.dev: `ALETHI_DEV=1 PORT=18451 go run ./cmd/site`, at
+     http://localhost:18451.
+3. Give Joel the post's URL on that server and tell him to click the
+   redline icon. His edits land in this worktree's files directly.
+4. Loop until Joel says the post is done: run `redline wait` as a
+   background command from the same worktree. When it prints a batch, make
+   each change, answer every thread with
+   `redline reply <id> -m "<what changed>" --resolve` (no `--resolve` when
+   you need to ask him something), and wait again. Re-read the lines in any
+   "Joel edited" entry before touching them: those are his hand edits and
+   his voice.
 
 A thread marked with an action (`[slop]`, `[polish]`) names the skill that
 handles it in the batch header; follow that skill's steps for the thread.
