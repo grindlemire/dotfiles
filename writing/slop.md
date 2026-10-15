@@ -177,6 +177,11 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Wordy titles.** Cut every word the title still works without.
   flagged: "Engineering after hand-written code"
   rewrite: "After hand-written code"
+- **Status text that narrates what a control already says.** In UI copy, a
+  line beside a button that restates its state. Let the button carry the
+  state, and keep labels short and literal.
+  flagged: "Edits since R1684, not published"
+  rewrite: "Update review"
 - **Announcing what comes next**, in any form: roadmap paragraphs, "I'll
   start with X, since Y", "which I'll come back to below". Start the next
   section; the heading and the first sentence carry the transition.
