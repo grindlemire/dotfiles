@@ -1,11 +1,39 @@
 #!/usr/bin/env bash
 # Symlink every skill in this directory into Claude and Codex skill dirs.
 # Existing symlinks are replaced; existing real directories are left alone (with a warning).
+# Skills listed in disabled.txt are not linked, and their existing links are removed.
+# -n / --dry-run prints what would change without touching anything.
 
 set -euo pipefail
 
+usage() {
+  echo "usage: $0 [-n|--dry-run] [all|claude|codex]" >&2
+  exit 2
+}
+
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET="${1:-all}"
+TARGET="all"
+DRY_RUN=0
+for arg in "$@"; do
+  case "$arg" in
+    -n | --dry-run) DRY_RUN=1 ;;
+    all | claude | codex) TARGET="$arg" ;;
+    *) usage ;;
+  esac
+done
+
+# act runs a command that changes something, unless this is a dry run;
+# say reports it either way.
+act() {
+  [ "$DRY_RUN" = 1 ] || "$@"
+}
+say() {
+  if [ "$DRY_RUN" = 1 ]; then
+    echo "(dry run) $*"
+  else
+    echo "$*"
+  fi
+}
 
 case "$TARGET" in
   all)
@@ -16,10 +44,6 @@ case "$TARGET" in
     ;;
   codex)
     DEST_DIRS=("${HOME}/.agents/skills")
-    ;;
-  *)
-    echo "usage: $0 [all|claude|codex]" >&2
-    exit 2
     ;;
 esac
 
@@ -33,23 +57,56 @@ link_skill() {
   target="$dest_dir/$skill"
 
   if [ -L "$target" ]; then
-    rm "$target"
+    act rm "$target"
   elif [ -e "$target" ]; then
-    echo "skip: $target exists and is not a symlink (remove it manually to replace)"
+    say "skip: $target exists and is not a symlink (remove it manually to replace)"
     return
   fi
 
-  ln -s "$skill_path" "$target"
-  echo "linked: $target"
+  act ln -s "$skill_path" "$target"
+  say "linked: $target"
+}
+
+disabled=" "
+if [ -f "$SRC_DIR/disabled.txt" ]; then
+  while read -r name _; do
+    case "$name" in "" | \#*) continue ;; esac
+    if [ ! -d "$SRC_DIR/$name" ]; then
+      echo "warn: disabled skill '$name' not found in $SRC_DIR" >&2
+    fi
+    disabled="$disabled$name "
+  done <"$SRC_DIR/disabled.txt"
+fi
+
+# Remove the link to a disabled skill. Only a link that resolves to this
+# skill is removed, so a same-named skill installed some other way survives.
+unlink_skill() {
+  local skill_path="$1"
+  local dest_dir="$2"
+  local target
+
+  target="$dest_dir/$(basename "$skill_path")"
+  [ -L "$target" ] || return 0
+  if [ "$(cd "$target" 2>/dev/null && pwd -P)" = "$(cd "$skill_path" && pwd -P)" ]; then
+    act rm "$target"
+    say "unlinked (disabled): $target"
+  fi
+}
+
+install_skill() {
+  case "$disabled" in
+    *" $(basename "$1") "*) unlink_skill "$1" "$2" ;;
+    *) link_skill "$1" "$2" ;;
+  esac
 }
 
 for dest_dir in "${DEST_DIRS[@]}"; do
-  mkdir -p "$dest_dir"
+  act mkdir -p "$dest_dir"
 done
 
 for skill_path in "$SRC_DIR"/*/; do
   for dest_dir in "${DEST_DIRS[@]}"; do
-    link_skill "$skill_path" "$dest_dir"
+    install_skill "$skill_path" "$dest_dir"
   done
 done
 
@@ -59,15 +116,15 @@ done
 link_config() {
   local src="$1"
   local target="$2"
-  mkdir -p "$(dirname "$target")"
+  act mkdir -p "$(dirname "$target")"
   if [ -L "$target" ]; then
-    rm "$target"
+    act rm "$target"
   elif [ -e "$target" ]; then
-    echo "skip: $target exists and is not a symlink (remove it manually to replace)"
+    say "skip: $target exists and is not a symlink (remove it manually to replace)"
     return
   fi
-  ln -s "$src" "$target"
-  echo "linked: $target"
+  act ln -s "$src" "$target"
+  say "linked: $target"
 }
 WRITING_DIR="$(cd "$SRC_DIR/../writing" && pwd)"
 link_config "$WRITING_DIR" "${HOME}/.config/writing"
@@ -84,14 +141,16 @@ TRIAL_PLUGIN="mattpocock-skills@${TRIAL_MARKETPLACE}"
 
 if { [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; } && command -v claude >/dev/null; then
   if ! CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin list 2>/dev/null | grep -q "$TRIAL_PLUGIN"; then
-    CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin marketplace add "$TRIAL_MARKETPLACE_REPO"
-    CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin install "$TRIAL_PLUGIN"
+    say "installing plugin: $TRIAL_PLUGIN into ${HOME}/.claude-test"
+    act env CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin marketplace add "$TRIAL_MARKETPLACE_REPO"
+    act env CLAUDE_CONFIG_DIR="${HOME}/.claude-test" claude plugin install "$TRIAL_PLUGIN"
   fi
 fi
 if { [ "$TARGET" = "all" ] || [ "$TARGET" = "codex" ]; } && command -v codex >/dev/null; then
   if ! CODEX_HOME="${HOME}/.codex-test" codex plugin list 2>/dev/null | grep -q "$TRIAL_PLUGIN"; then
-    CODEX_HOME="${HOME}/.codex-test" codex plugin marketplace add "$TRIAL_MARKETPLACE_REPO"
-    CODEX_HOME="${HOME}/.codex-test" codex plugin add "$TRIAL_PLUGIN"
+    say "installing plugin: $TRIAL_PLUGIN into ${HOME}/.codex-test"
+    act env CODEX_HOME="${HOME}/.codex-test" codex plugin marketplace add "$TRIAL_MARKETPLACE_REPO"
+    act env CODEX_HOME="${HOME}/.codex-test" codex plugin add "$TRIAL_PLUGIN"
   fi
 fi
 
@@ -106,11 +165,11 @@ for skill in "${STABLE_TEST_SKILLS[@]}"; do
     continue
   fi
   if [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; then
-    mkdir -p "${HOME}/.claude-test/skills"
-    link_skill "$skill_path" "${HOME}/.claude-test/skills"
+    act mkdir -p "${HOME}/.claude-test/skills"
+    install_skill "$skill_path" "${HOME}/.claude-test/skills"
   fi
   if [ "$TARGET" = "all" ] || [ "$TARGET" = "codex" ]; then
-    mkdir -p "${HOME}/.codex-test/skills"
-    link_skill "$skill_path" "${HOME}/.codex-test/skills"
+    act mkdir -p "${HOME}/.codex-test/skills"
+    install_skill "$skill_path" "${HOME}/.codex-test/skills"
   fi
 done

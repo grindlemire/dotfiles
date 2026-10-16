@@ -1,0 +1,7 @@
+# Skills that install.sh does not install. One skill directory name per line.
+# The skill stays in this directory (and upstream skills keep syncing); install.sh
+# removes any link to it that it finds in the destination skill dirs instead of
+# creating one. Delete the line and rerun install.sh to re-enable it.
+#
+# e.g.
+# caveman

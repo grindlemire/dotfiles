@@ -34,7 +34,7 @@ ln -s ~/dotfiles/ghostty/config ~/.config/ghostty/config
 
 ### Claude Code Skills
 
-- **`skills/`** - Personal Claude Code skills. Run `./skills/install.sh` to symlink each skill into `~/.claude/skills/`.
+- **`skills/`** - Personal Claude Code skills. Run `./skills/install.sh` to symlink each skill into `~/.claude/skills/`. List a skill in `skills/disabled.txt` to stop installing it without deleting it; the next run removes its link.
 
 ## Key Features
 
