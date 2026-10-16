@@ -57,6 +57,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Idioms standing in for an argument.** State the mechanism.
   flagged: "That leverage cuts both ways"
   rewrite: "it multiplies a bad change as easily as a good one."
+- **"cost" as drama** ("starts to cost something", "shows what that costs")
+  when nothing is being priced. Say what starts to behave differently.
+  flagged: "It starts to cost something"
+- **Physical idioms for how software parts relate** ("hang off", "sit on
+  top of"). Say what the relationship is.
+  flagged: "and its diff, threads, approvals, and merge button all hang off that pair of branches"
 - **"part" / "parts"** to refer to the argument's own structure.
   flagged: "I'm building GitStack for this part"
   rewrite: "to address this"
@@ -149,6 +155,10 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 
 ## Rhythm
 
+- **Alliteration** in titles and thesis lines. Name the subject plainly,
+  in the words a reader would search for.
+  flagged: "A pile of pull requests"
+  rewrite: "GitStack vs. GitHub stacked pull requests"
 - **Short dramatic sentences**, alone or in stutter runs. Merge them into a
   sentence that carries its reason.
   flagged: "The order matters."
@@ -174,6 +184,10 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   seen), then tell the scene in third person. Keep the closing scene in the
   same person.
   flagged: "You ask the agent to read the design doc…"
+- **Teaser descriptions** that promise a demonstration ("One small feature,
+  followed through both tools, shows…"). Say what the post compares and
+  what it covers.
+  flagged: "One small feature, followed through both tools, shows what that costs."
 - **Wordy titles.** Cut every word the title still works without.
   flagged: "Engineering after hand-written code"
   rewrite: "After hand-written code"
@@ -287,6 +301,13 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   guess. Make the point as general argument with no first-person story.
   flagged: "At a previous job, at a large company, we stacked changelists"
   rewrite: "each review lands as its own commit and can be reverted without touching the others, so each one gets its own sign-off."
+- **Citing the research behind the post** ("in our test", "we saw both"). The
+  reader wasn't there, and Joel writes as "I", not a research "we". State
+  what the research found as the fact it is. "We" stays fine for walkthrough
+  steps the reader follows.
+  flagged: "In our test the endpoint's pull request ran CI twice on the same commit"
+  rewrite: "Sometimes the endpoint's pull request can run CI twice on the same commit"
+  flagged: "We saw both in our test."
 - **Inventing events in Joel's life**, including anecdotes, feelings,
   incidents, testimonials, and stats. Write it as a general example, untied
   to him, or leave `[ANECDOTE: what kind]` and ask.
