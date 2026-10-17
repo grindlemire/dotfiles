@@ -179,11 +179,17 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 
 ## Structure
 
-- **Opening on "you" in a scene** puts the reader in a role they may not
-  hold. Open from something most readers share (the demo everyone has
-  seen), then tell the scene in third person. Keep the closing scene in the
+- **Opening on "you" in a scene** without setting it up puts the reader in a
+  role they may not hold. Open with "Suppose you are…" so the role is an
+  invitation, tell the scene in "you", and keep the closing scene in the
   same person.
   flagged: "You ask the agent to read the design doc…"
+  rewrite: "Suppose you are an engineer at an organization with something to protect, and you sit down with a coding agent to build a feature from a design doc."
+- **Opening on "the demos"** or another contrast with how things look
+  elsewhere. Start in the scene the post is about, and end the opening on
+  what the post shows is possible.
+  flagged: "The demos show a coding agent with free rein over a fresh project, turning a prompt into a working feature in a few minutes."
+  rewrite: "Suppose you are an engineer at an organization with something to protect, and you sit down with a coding agent to build a feature from a design doc."
 - **Teaser descriptions** that promise a demonstration ("One small feature,
   followed through both tools, shows…"). Say what the post compares and
   what it covers.

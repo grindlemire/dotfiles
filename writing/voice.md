@@ -25,8 +25,9 @@ file, this file wins.
   wondering, answered by the next sentence in full (never a "Because…"
   fragment), despite humanizer §33.
 - **Bold run-in leads** on list items and on a system's parts, despite §15.
-- **Third person in scenes.** §26 and §27 suggest "you" to put the reader in
-  the scene; Joel's openings don't.
+- **A "Suppose you are…" opening scene.** The reader is invited into a
+  hypothetical role ("Suppose you are an engineer at…") and the scene follows
+  in "you". Without "Suppose", don't drop the reader into a role.
 
 ## Joel himself
 
