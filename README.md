@@ -32,6 +32,10 @@ ln -s ~/dotfiles/ghostty/config ~/.config/ghostty/config
 
 - **`ghostty/config`** - Ghostty terminal configuration (theme, palette, font size)
 
+### Claude Code Status Line
+
+- **`claude/statusline.sh`** - Two-line status line: project, branch and either the GitStack stack position or the open PR; then model, effort, context and usage limits, which only appear past a threshold. `./skills/install.sh` links it to `~/.claude/statusline.sh` and sets the `statusLine` entry in `~/.claude/settings.json`.
+
 ### Claude Code Skills
 
 - **`skills/`** - Personal Claude Code skills. Run `./skills/install.sh` to symlink each skill into `~/.claude/skills/`. List a skill in `skills/disabled.txt` to stop installing it without deleting it; the next run removes its link.

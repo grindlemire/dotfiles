@@ -2,6 +2,7 @@
 # Symlink every skill in this directory into Claude and Codex skill dirs.
 # Existing symlinks are replaced; existing real directories are left alone (with a warning).
 # Skills listed in disabled.txt are not linked, and their existing links are removed.
+# Also links the writing voice pack and the Claude Code status line.
 # -n / --dry-run prints what would change without touching anything.
 
 set -euo pipefail
@@ -129,6 +130,24 @@ link_config() {
 WRITING_DIR="$(cd "$SRC_DIR/../writing" && pwd)"
 link_config "$WRITING_DIR" "${HOME}/.config/writing"
 link_config "$WRITING_DIR/redline.toml" "${HOME}/.config/redline/actions.toml"
+
+# The Claude Code status line (dotfiles/claude/statusline.sh), and the
+# statusLine entry in settings.json that runs it. Only that one key is set;
+# the rest of settings.json is left as it is.
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "claude" ]; then
+  link_config "$(cd "$SRC_DIR/../claude" && pwd)/statusline.sh" "${HOME}/.claude/statusline.sh"
+
+  SETTINGS="${HOME}/.claude/settings.json"
+  STATUS_LINE='{"type":"command","command":"bash ~/.claude/statusline.sh"}'
+  if ! jq -e --argjson s "$STATUS_LINE" '.statusLine == $s' "$SETTINGS" >/dev/null 2>&1; then
+    say "set statusLine in $SETTINGS"
+    if [ "$DRY_RUN" != 1 ]; then
+      updated=$( { cat "$SETTINGS" 2>/dev/null || echo '{}'; } | jq --argjson s "$STATUS_LINE" '.statusLine = $s')
+      # Write through rather than mv, so a symlinked settings.json stays a symlink.
+      printf '%s\n' "$updated" >"$SETTINGS"
+    fi
+  fi
+fi
 
 # Trial plugins — only for the test sandboxes, never the regular ~/.claude or
 # ~/.codex installs. Installed from the author's own marketplace so they track
