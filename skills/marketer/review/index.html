@@ -6,7 +6,9 @@
 <title>Post Queue</title>
 <style>
   /* Console look (borrowed from GitStack's ui/styles/theme.css tokens): dark panels, hairlines, IBM Plex, square pills.
-     Layout: a 48px bar, then one row per draft: the draft and its thread on the left, a live channel preview on the right. */
+     Layout: a 48px bar, then one post at a time. The queue on the left, the post's text in the middle (select it to
+     comment or flag it, double-click a paragraph to edit) with the channel render under it, and its threads on the
+     right, each column scrolling on its own. "All posts" lists every draft. Selection, actions, and batching follow redline. */
   @font-face { font-family: "IBM Plex Sans"; src: url(/fonts/IBMPlexSans-Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
   @font-face { font-family: "IBM Plex Sans"; src: url(/fonts/IBMPlexSans-Medium.woff2) format("woff2"); font-weight: 500; font-display: swap; }
   @font-face { font-family: "IBM Plex Sans"; src: url(/fonts/IBMPlexSans-SemiBold.woff2) format("woff2"); font-weight: 600; font-display: swap; }
@@ -27,6 +29,7 @@
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg0); color: var(--ink95); font: 13px/1.5 var(--sans);
          scrollbar-color: var(--ink22) var(--bg0); }
   a { color: var(--blue); }
@@ -40,24 +43,7 @@
   .bar .tally { margin-left: auto; display: flex; gap: 6px; }
   .bar select { font: 500 12px var(--mono); color: var(--ink80); background: var(--bg1); border: 1px solid var(--line-strong);
                 border-radius: 3px; height: 24px; }
-
-  main { max-width: 1340px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 80px; display: grid; gap: 32px; }
-  .intro { color: var(--ink65); margin: 0; max-width: 80ch; }
-  .intro b { color: var(--ink95); font-weight: 600; }
-  .intro code { font: 12px var(--mono); color: var(--ink95); background: var(--bg2); padding: 1px 5px; border-radius: 3px; }
-  .batch { display: grid; gap: 12px; }
-  .batch-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .label { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ink50); }
-  .batch-head p { margin: 0; color: var(--ink65); }
-
-  .row { display: grid; grid-template-columns: minmax(0, 1fr) 634px; border: 1px solid var(--line-strong);
-         border-radius: 4px; background: var(--bg1); }
-  @media (max-width: 1180px) { .row { grid-template-columns: minmax(0, 1fr); } }
-  .draft { padding: 14px 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
-  .preview { border-left: 1px solid var(--line-strong); background: var(--bg0); padding: 16px; display: grid;
-             gap: 8px; align-content: start; min-width: 0; }
-  @media (max-width: 1180px) { .preview { border-left: 0; border-top: 1px solid var(--line-strong); } }
-  .row.skipped .draft { opacity: .6; }
 
   .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .pill { font: 500 11px/18px var(--mono); padding: 0 6px; border-radius: 3px; border: 1px solid var(--line-strong);
@@ -67,14 +53,13 @@
   .pill.posted { color: var(--add); background: var(--add-bg); border-color: transparent; }
   .pill.skipped { color: var(--ink50); }
   .pill.wait { color: var(--amber); background: var(--amber-bg); border-color: transparent; }
+  .pill.working { display: inline-flex; align-items: center; gap: 5px; color: var(--blue); background: var(--blue-bg); border-color: transparent; }
+  .spin { display: inline-block; flex: none; width: 10px; height: 10px; box-sizing: border-box; border-radius: 50%; vertical-align: -1px;
+          border: 1.5px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
   .count { margin-left: auto; font: 12px var(--mono); color: var(--ink50); font-variant-numeric: tabular-nums; }
   .count.over { color: var(--del); font-weight: 500; }
-
-  .text { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.55; color: var(--ink95); }
-  .text .lk { color: var(--blue); }
-  .facts { display: grid; gap: 2px; font-size: 12px; color: var(--ink50); }
-  .facts b { color: var(--ink65); font-weight: 500; }
-  .facts a { word-break: break-all; }
 
   .actions { display: flex; flex-wrap: wrap; gap: 6px; }
   button { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 4px; cursor: pointer;
@@ -98,13 +83,11 @@
   textarea.edit { font-size: 14px; min-height: 150px; }
   ::placeholder { color: var(--ink38); }
 
-  .thread { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
   .msg { display: grid; gap: 2px; }
   .msg .who { font: 500 11.5px var(--mono); color: var(--ink80); }
   .msg.claude .who { color: var(--blue); }
   .msg .at { font: 11px var(--mono); color: var(--ink38); margin-left: 6px; }
   .msg p { margin: 0; white-space: pre-wrap; color: var(--ink80); }
-  form.comment { display: flex; gap: 6px; align-items: flex-end; }
   .empty { color: var(--ink50); }
 
   /* Channel previews, drawn at each feed's real column width so lines break where they will.
@@ -194,18 +177,219 @@
   .pv.reddit .sub { color: #818384; font-size: 12px; }
   .pv.reddit .body { font-size: 14px; line-height: 21px; margin-top: 4px; }
   .pv.reddit .lk { color: #4fbcff; }
+
+  :root { --green: #6ad28d; --hl-comment: rgba(245,185,90,.24); }
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+  .app { display: grid; grid-template-rows: 48px minmax(0, 1fr); height: 100%; }
+  .bar .tabs { display: flex; gap: 2px; margin-left: 12px; padding: 2px; background: var(--bg1); border: 1px solid var(--line-strong); border-radius: 4px; }
+  .bar .tabs button { height: 22px; border: 0; background: transparent; color: var(--ink65); }
+  .bar .tabs button.on { background: var(--bg3); color: var(--ink95); }
+  #view { display: grid; min-height: 0; }
+  .empty { margin: 0; }
+
+  /* Key caps sit on the text line: one cap per shortcut, centered on the words around it. */
+  kbd { display: inline-flex; align-items: center; justify-content: center; height: 17px; min-width: 17px; padding: 0 4px;
+        vertical-align: middle; font: 500 10.5px/1 -apple-system, system-ui, sans-serif; letter-spacing: .04em; color: var(--ink65);
+        border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 3px; background: var(--bg1); }
+
+  .focus { display: grid; grid-template-columns: 272px minmax(0, 1fr) 400px; min-height: 0; }
+  .focus.norail { grid-template-columns: 0 minmax(0, 1fr) 400px; }
+  .focus.noside { grid-template-columns: 272px minmax(0, 1fr) 0; }
+  .focus.norail.noside { grid-template-columns: 0 minmax(0, 1fr) 0; }
+  .focus.norail .rail, .focus.noside .side { visibility: hidden; }
+  .rail, .stage, .side { min-height: 0; overflow: auto; }
+  /* Rows keep their content's height; otherwise a full column squeezes cards that clip (overflow: hidden). */
+  .rail, .stage, .side .tlist { grid-auto-rows: max-content; }
+
+  /* Queue rail */
+  .rail { border-right: 1px solid var(--line-strong); padding: 12px 8px 40px; display: grid; gap: 4px; align-content: start; }
+  .rail .label { padding: 10px 8px 4px; }
+  .ri { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 8px auto 1fr auto; gap: 2px 8px; align-items: center;
+        padding: 7px 8px; border-radius: 4px; border: 1px solid transparent; }
+  .ri:hover { background: var(--bg1); }
+  .ri:focus-visible { outline: 2px solid var(--blue); }
+  .ri.active { background: var(--bg2); border-color: var(--line-strong); }
+  .ri .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+  .ri.posted .dot { background: var(--add); } .ri.skipped .dot { background: var(--ink38); }
+  .ri .ch { font: 500 11.5px var(--mono); color: var(--ink95); }
+  .ri .when { font: 11px var(--mono); color: var(--ink50); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ri .cc { font: 11px var(--mono); color: var(--ink50); display: inline-flex; gap: 6px; align-items: center; }
+  .ri .cc svg, .ov-row .cc svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; vertical-align: -1px; margin-right: 3px; }
+  .ri .cc .un { color: var(--blue); }
+  .ri.wait .cc .n { color: var(--amber); }
+  .ri.working .cc { color: var(--blue); }
+  .ri .snip { grid-column: 2 / -1; font-size: 12px; color: var(--ink65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ri.skipped .snip, .ri.posted .snip { color: var(--ink50); }
+
+  /* Stage: the text first, then what to do with it, then the render */
+  .stage { position: relative; padding: 20px 28px 64px; display: grid; gap: 16px; align-content: start; justify-items: center; }
+  .stage > :not(.float) { width: min(100%, 680px); }
+  .stagehead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .stagehead .nav { margin-left: auto; display: flex; gap: 4px; align-items: center; font: 11.5px var(--mono); color: var(--ink50);
+                    font-variant-numeric: tabular-nums; }
+  .stagehead .nav button { width: 26px; justify-content: center; padding: 0; }
+
+  .sheet { display: grid; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg1); }
+  .sheet .shead { display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; border-bottom: 1px solid var(--line); }
+  .sheet .shead .count { margin-left: auto; }
+  .read { padding: 14px 10px 8px; font: 16.5px/1.62 var(--sans); color: var(--ink95); cursor: text; }
+  .read p { margin: 0 0 12px; padding: 2px 8px; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .read p { transition: box-shadow 140ms ease-out, background-color 140ms ease-out; }
+  .read p:hover { background: rgba(90,160,255,.035); box-shadow: inset 0 0 0 1px rgba(90,160,255,.22); }
+  .read .lk { color: var(--blue); }
+  /* The edit card, as in redline: the paragraph lifts into a card and its text stays exactly where it was.
+     The card's surface (::before) rises under the text, and the footer opens below it, pushing what follows down. */
+  .lift { position: relative; isolation: isolate; margin: 0 0 12px; padding: 2px 8px; }
+  .lift::before { content: ""; position: absolute; inset: -8px -4px -4px; z-index: -1; border-radius: 8px; background: var(--bg1);
+                  border: 1px solid rgba(90,160,255,.32); opacity: 0;
+                  transition: opacity 160ms ease-out, transform 160ms ease-out, box-shadow 160ms ease-out; }
+  .lift.lifted::before { opacity: 1; transform: translateY(-2px) scale(1.006);
+                         box-shadow: 0 2px 6px rgba(0,0,0,.28), 0 14px 36px rgba(0,0,0,.42); }
+  .lift textarea { display: block; width: 100%; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent;
+                   resize: none; overflow: hidden; field-sizing: content; font: inherit; color: inherit; caret-color: var(--blue);
+                   white-space: pre-wrap; overflow-wrap: anywhere; }
+  .lift textarea:focus-visible { outline: none; }
+  .lift textarea::selection { background: rgba(90,160,255,.32); }
+  .lift .grow-foot { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 160ms ease-out; }
+  .lift.lifted .grow-foot { grid-template-rows: 1fr; }
+  .lift .foot { display: flex; align-items: center; gap: 8px 10px; min-height: 0; overflow: hidden; padding-top: 12px;
+                font: 11.5px var(--mono); color: var(--ink50); opacity: 0; transform: translateY(-4px);
+                transition: opacity 160ms ease-out 60ms, transform 160ms ease-out 60ms; }
+  .lift.lifted .foot { opacity: 1; transform: none; }
+  .lift .foot .pill { color: var(--blue); background: var(--blue-bg); }
+  .lift .foot .hint { display: inline-flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
+  .lift .foot .spacer { flex: 1; }
+  .lift[aria-busy="true"] .foot button { opacity: .6; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .lift::before, .lift .grow-foot, .lift .foot, .read p { transition: none; } }
+  ::highlight(hl-comment) { background-color: var(--hl-comment); }
+  ::highlight(hl-new) { background-color: rgba(106,210,141,.2); text-decoration: underline 1.5px rgba(106,210,141,.7); text-underline-offset: 4px; }
+  .pill.revised { color: var(--add); background: var(--add-bg); border-color: transparent; }
+  ::highlight(hl-pending) { background-color: rgba(90,160,255,.32); }
+  ::highlight(hl-active) { text-decoration: underline 2px; text-decoration-color: var(--ink80); text-underline-offset: 4px; }
+  .sheet .sfoot { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--line);
+                  font-size: 12px; color: var(--ink50); }
+  .sheet .sfoot code { font: 11.5px var(--mono); color: var(--ink80); background: var(--bg2); padding: 0 4px; border-radius: 3px; }
+  .sheet .sfoot .lnk { color: var(--ink65); word-break: break-all; }
+  .sheet .sfoot .how { margin-left: auto; }
+  .decide { font-size: 12.5px; color: var(--ink80); padding: 8px 12px; border-radius: 4px; background: var(--amber-bg); }
+  .decide b { color: var(--amber); font-weight: 500; }
+  .stage .panel { max-width: 680px; }
+
+  /* Floating selection toolbar and composer */
+  .float { position: absolute; z-index: 5; }
+  .selbar { display: flex; gap: 2px; padding: 3px; background: var(--bg3); border: 1px solid var(--btn-border); border-radius: 6px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.45); }
+  .selbar button { height: 26px; gap: 7px; border: 0; background: transparent; }
+  .selbar button:hover { background: var(--btn-hover); }
+  .sw { width: 8px; height: 8px; border-radius: 2px; background: var(--act, var(--amber)); flex: none; }
+  .composer { width: 380px; max-width: calc(100vw - 48px); background: var(--bg2); border: 1px solid var(--btn-border); border-radius: 6px;
+              box-shadow: 0 10px 30px rgba(0,0,0,.5); overflow: hidden; }
+  .composer textarea { display: block; width: calc(100% - 24px); margin: 10px 12px 0; min-height: 64px; }
+  .composer textarea.short { min-height: 38px; }
+  .composer .row { display: flex; gap: 6px; align-items: center; padding: 8px 12px 10px; }
+  .composer .hint { margin-right: auto; display: inline-flex; gap: 5px; align-items: center; font: 11px var(--mono); color: var(--ink50); }
+
+  /* Thread cards, shared by the composer */
+  .card { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg1); overflow: hidden; }
+  .side .card[data-t] { cursor: pointer; }
+  .card.active { border-color: rgba(90,160,255,.6); box-shadow: 0 0 0 1px rgba(90,160,255,.3); }
+  .card.flash { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: rgba(90,160,255,.18); } to { background: var(--bg1); } }
+  .card-head { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--bg2); }
+  .card.is-draft .card-head, .composer .card-head { background: color-mix(in srgb, var(--blue) 7%, var(--bg1)); }
+  .card.is-resolved .card-head { background: color-mix(in srgb, var(--green) 6%, var(--bg1)); }
+  .card.is-resolved, .card.is-info { border-color: var(--line); }
+  .card-head .kind { flex: 1; min-width: 0; font: 11.5px var(--mono); color: var(--ink65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill.new, .pill.st-draft { color: var(--blue); background: var(--blue-bg); border-color: transparent; }
+  .pill.st-sent { color: var(--amber); background: var(--amber-bg); border-color: transparent; }
+  .pill.st-resolved { color: var(--green); background: var(--add-bg); border-color: transparent; }
+  .pill.act { color: var(--act); background: color-mix(in srgb, var(--act) 15%, transparent); border-color: transparent; }
+  [data-action="comment"] { --act: var(--amber); } [data-action="edit"] { --act: var(--ink65); }
+  .quote { margin: 10px 12px 0; padding: 1px 0 1px 10px; border-left: 2px solid color-mix(in srgb, var(--act, var(--amber)) 55%, transparent);
+           font: italic 13px/1.5 var(--sans); color: var(--ink65); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .quote.gone { text-decoration: line-through; color: var(--ink50); }
+  .quote del { color: var(--ink50); } .quote ins { text-decoration: none; color: var(--ink80); }
+  .card .msgs { display: grid; gap: 10px; padding: 10px 12px 12px; }
+  .card .msgs:empty { display: none; }
+  .card .msg p { font-size: 13px; }
+  .card .msg .del { height: 18px; padding: 0 4px; margin-left: 6px; font-size: 10.5px; }
+  .card .more { justify-self: start; height: 22px; }
+  .card .foot { display: flex; gap: 6px; align-items: center; padding: 0 12px 10px; font: 11px var(--mono); color: var(--ink50); }
+  .card .foot .grow { flex: 1; }
+  .card .foot .working { display: inline-flex; align-items: center; gap: 6px; color: var(--blue); }
+  .card .reply { display: grid; gap: 6px; padding: 0 12px 12px; }
+  .card .reply textarea { min-height: 38px; }
+
+  .pvsec { display: grid; gap: 8px; }
+  .pvsec .phead { display: flex; align-items: center; gap: 8px; }
+  .pvsec .phead button { margin-left: auto; }
+  .pvfit { overflow: hidden; }
+  .stage .facts { font-size: 12px; gap: 4px; }
+  .keys { font-size: 11.5px; color: var(--ink50); display: flex; gap: 6px 14px; flex-wrap: wrap; }
+  .keys > span { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* Side: threads on the text in text order, then the whole-post conversation, then its composer */
+  .side { border-left: 1px solid var(--line-strong); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+  .side .head { display: flex; gap: 8px; align-items: center; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--line); min-height: 45px; }
+  .side .head .grow { flex: 1; }
+  .side .tlist { overflow: auto; padding: 12px; display: grid; gap: 10px; align-content: start; }
+  .side .tlist .label { padding: 4px 2px 0; }
+  .side .tlist > .empty { font-size: 12.5px; padding: 0 2px; line-height: 1.7; }
+  .side .compose { border-top: 1px solid var(--line-strong); padding: 10px 12px; display: grid; gap: 6px; background: var(--bg1); }
+  .side .compose textarea { min-height: 56px; }
+  .side .compose .inline { justify-content: space-between; }
+  .side .compose .hint { display: inline-flex; gap: 5px; align-items: center; font: 11px var(--mono); color: var(--ink50); }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 20; max-width: calc(100vw - 32px);
+           display: flex; gap: 10px; align-items: center; padding: 8px 10px 8px 14px; border-radius: 6px; background: var(--bg3);
+           border: 1px solid var(--btn-border); box-shadow: 0 8px 24px rgba(0,0,0,.5); font-size: 13px; }
+  .toast.err { border-color: var(--del); }
+
+  /* Overview: every post on one screen */
+  .overview { overflow: auto; padding: 20px 16px 80px; }
+  .overview .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 24px; }
+  .intro { color: var(--ink65); margin: 0; max-width: 80ch; }
+  .intro b { color: var(--ink95); font-weight: 600; }
+  .intro code { font: 12px var(--mono); color: var(--ink95); background: var(--bg2); padding: 1px 5px; border-radius: 3px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filters button.on { color: var(--ink95); background: var(--bg3); border-color: rgba(255,255,255,.3); }
+  .ov-batch { display: grid; gap: 6px; }
+  .batch-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .batch-head p { margin: 0; color: var(--ink65); }
+  .ov-row { all: unset; box-sizing: border-box; cursor: pointer; display: grid; align-items: center; gap: 12px;
+            grid-template-columns: 84px 76px 110px minmax(0, 1fr) 140px 56px; padding: 9px 12px;
+            background: var(--bg1); border: 1px solid var(--line-strong); border-radius: 4px; }
+  .ov-row:hover { background: var(--bg2); border-color: rgba(255,255,255,.18); }
+  .ov-row:focus-visible { outline: 2px solid var(--blue); }
+  .ov-row .t { font-size: 13px; color: var(--ink80); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ov-row.skipped .t, .ov-row.posted .t { color: var(--ink50); }
+  .ov-row .w { font: 11.5px var(--mono); color: var(--ink65); }
+  .ov-row .ang { font: 11px var(--mono); color: var(--ink50); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ov-row .cc { justify-self: end; font: 11.5px var(--mono); color: var(--ink50); }
+  .ov-row .cc.wait { color: var(--amber); }
+  .ov-row .cc.working { color: var(--blue); display: inline-flex; align-items: center; gap: 6px; }
+  .ov-row .pill { justify-self: start; }
+
+  @media (max-width: 1240px) {
+    .focus, .focus.norail { grid-template-columns: 0 minmax(0, 1fr) 360px; } .focus .rail { visibility: hidden; }
+    .focus.railopen { grid-template-columns: 272px minmax(0, 1fr) 360px; } .focus.railopen .rail { visibility: visible; }
+    .focus.noside { grid-template-columns: 0 minmax(0, 1fr) 0; } .focus.railopen.noside { grid-template-columns: 272px minmax(0, 1fr) 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .card.flash { animation: none; } }
 </style>
 </head>
 <body>
+<div class="app">
 <header class="bar">
   <img id="mark" alt="" hidden>
   <span class="word" id="word"></span><select id="switch" aria-label="Project" hidden></select><span class="sep">/</span><span class="crumb">post queue</span>
+  <div class="tabs"><button data-view="focus">Focus</button><button data-view="all">All posts</button></div>
   <span class="tally" id="tally"></span>
 </header>
-<main>
-  <p class="intro" id="next"></p>
-  <div id="batches"><p class="empty">Loading drafts...</p></div>
-</main>
+<div id="view"><p class="empty" style="padding:24px 16px">Loading drafts...</p></div>
+</div>
+<div id="toast" class="toast" hidden></div>
 <script>
 const LIMITS = { x: 280, bluesky: 300, linkedin: 3000 };
 const NAMES = { x: "X", bluesky: "Bluesky", linkedin: "LinkedIn", reddit: "Reddit", hn: "Hacker News" };
@@ -217,9 +401,6 @@ const ME = {
 // Which project this page shows: ?project=<slug>, or the only one in projects.toml.
 let PROJECT = new URLSearchParams(location.search).get("project") || "";
 const q = () => (PROJECT ? "project=" + encodeURIComponent(PROJECT) : "");
-let last = "", data = { batches: [] }, deferred = false;
-const open = {}; // card key -> "edit" | "skip" | "posted"
-const og = {};   // link -> card data from the server, or "loading"
 
 const key = (b, id) => `${b}/${id}`;
 function esc(s) {
@@ -237,7 +418,6 @@ function countHTML(d, text) {
   const n = charCount(d, text), lim = LIMITS[d.channel];
   return `<span class="count ${lim && n > lim ? "over" : ""}">${n}${lim ? " / " + lim : ""}</span>`;
 }
-function find(b, id) { return data.batches.find(x => x.batch === b).drafts.find(x => x.id === id); }
 // Bluesky's composer shortens a link to host + the first 13 characters of the path, then "..."
 // (toShortUrl in bluesky-social/social-app; checked against live posts).
 function bskyShort(url) {
@@ -332,188 +512,799 @@ function composeURL(d) {
   return "";
 }
 
-async function api(path, body) {
-  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: PROJECT, ...body }) });
-  if (!r.ok) { document.querySelector(".intro").textContent = "Error: " + ((await r.json()).error || r.statusText); return false; }
-  await refresh(true);
-  return true;
-}
 async function copy(btn, text) {
   try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
   catch { btn.textContent = "Copy failed"; }
   setTimeout(() => (btn.textContent = btn.dataset.label), 1500);
 }
 
-function panel(b, d) {
-  const mode = open[key(b, d.id)], id = esc(`${b}-${d.id}`);
-  if (mode === "edit") return `<div class="panel">
-      <label for="e-${id}">Edit the post. Keep {link} where the link goes; the preview follows as you type.</label>
-      <textarea class="edit" id="e-${id}" data-live="edit">${esc(d.text)}</textarea>
-      <div class="inline"><button class="primary" data-act="save-edit">Save edit</button><button class="ghost" data-act="close">Cancel</button>${countHTML(d, d.text)}</div>
-    </div>`;
-  if (mode === "skip") return `<div class="panel">
-      <label for="s-${id}">Why skip it? Optional, and the reason teaches the next batch.</label>
-      <div class="inline"><input type="text" id="s-${id}" placeholder="e.g. too salesy, wrong angle for X">
-      <button class="primary" data-act="save-skip">Skip</button><button class="ghost" data-act="close">Cancel</button></div>
-    </div>`;
-  if (mode === "posted") return `<div class="panel">
-      <label for="p-${id}">Link to the live post. Optional; lets the memo pull likes and replies later.</label>
-      <div class="inline"><input type="text" id="p-${id}" value="${esc(d.post_url || "")}" placeholder="https://x.com/...">
-      <button class="primary" data-act="save-posted">Mark posted</button><button class="ghost" data-act="close">Cancel</button></div>
-    </div>`;
+// ---- state
+
+let last = "", data = { batches: [] }, deferred = false;
+const og = {};          // link -> card data from the server, or "loading"
+let ACTIONS = [];       // redline's selection actions (slop, polish), from /api/actions
+let view = "focus", cur = null, rail = true, side = true, filter = "draft", showPreview = true;
+let active = null;      // focused thread id
+let sel = null;         // {from, to} of the live text selection
+let compose = null;     // {from, to, action} while the floating composer is open
+let editing = null;     // {from, to} of the paragraph (or whole post) being edited
+let panelOpen = null;   // "posted" | "skip" while that note is open
+let showEarlier = false, showResolved = false;
+// What Claude just said, spotted between polls: per post, the threads it answered (flashed once) and the
+// stretches of text it rewrote (marked until Joel leaves the post or changes the text).
+const fresh = {};       // key -> {ids, text, ranges}
+const unsent = {};      // "<draft key>|<textarea id>" -> typed text, kept across redraws
+try { showPreview = localStorage.getItem("pv") !== "0"; } catch {}
+
+const all = () => data.batches.flatMap(b => (b.drafts || []).map(d => ({ b: b.batch, d, k: key(b.batch, d.id) })));
+const st = d => d.status || "draft";
+const byKey = k => all().find(x => x.k === k);
+const current = () => byKey(cur);
+const threads = d => d.threads || [];
+const actionOf = name => ACTIONS.find(a => a.name === name);
+// Unsent work on a post: its draft threads plus whole-post comments not yet sent.
+const unsentCount = d => threads(d).filter(t => t.status === "draft").length + (d.comments || []).filter(c => c.draft).length;
+// Claude is working from Send batch until it answers. The page can't see whether a session is listening,
+// so after a few minutes without an answer it says so instead of spinning on.
+const STALE_MS = 5 * 60e3;
+const working = d => !!d.needs_claude && !!d.sent_at && Date.now() - d.sent_at * 1000 < STALE_MS;
+const stalled = d => !!d.needs_claude && !working(d);
+const SPIN = `<span class="spin" aria-hidden="true"></span>`;
+const short = s => (s || "").split(",")[0].replace(/\s*\(.*\)/, "");
+const COMMENT = `<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>`;
+
+// Drafts still to post come first, soonest post_on day first; posted and
+// skipped ones follow. post_on ("Tue Oct 13, morning") has no year, so it
+// takes the batch's year, rolling into the next year when that would land
+// before the batch was drafted.
+function day(b, d) {
+  const drafted = new Date(b + "T00:00"), t = new Date(`${short(d.post_on)} ${drafted.getFullYear()}`);
+  if (isNaN(t)) return Infinity;
+  if (t < drafted) t.setFullYear(t.getFullYear() + 1);
+  return t.getTime();
+}
+function queue() {
+  const items = all();
+  const todo = items.filter(x => st(x.d) === "draft").sort((x, y) => day(x.b, x.d) - day(y.b, y.d));
+  return { todo, done: items.filter(x => st(x.d) !== "draft") };
+}
+const flat = () => { const q = queue(); return [...q.todo, ...q.done]; };
+
+// ---- actions: colors and keys from redline's actions.toml
+
+// An action's color as redline draws it on a dark page: lifted toward white.
+function tone(hex) {
+  const n = parseInt(String(hex || "#f5b95a").slice(1), 16);
+  return `rgb(${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => Math.round(c + (255 - c) * 0.45)).join(" ")})`;
+}
+function parseKey(spec) {
+  if (!spec) return null;
+  const parts = spec.toLowerCase().split("+"), k = parts.pop();
+  return { mod: parts.includes("mod"), shift: parts.includes("shift"), alt: parts.includes("alt"), key: k };
+}
+function keyMatches(e, k) {
+  if (!k || k.mod !== (e.metaKey || e.ctrlKey) || k.shift !== e.shiftKey || k.alt !== e.altKey) return false;
+  return e.code === (/^[a-z]$/.test(k.key) ? "Key" + k.key.toUpperCase() : "Digit" + k.key) || e.key.toLowerCase() === k.key;
+}
+// One cap per shortcut: ⌘⇧S.
+function cap(spec) {
+  const k = parseKey(spec);
+  return k ? `<kbd>${k.mod ? "⌘" : ""}${k.alt ? "⌥" : ""}${k.shift ? "⇧" : ""}${esc(k.key.toUpperCase())}</kbd>` : "";
+}
+function actAttr(name) {
+  const a = actionOf(name);
+  return a ? `data-action="${esc(name)}" style="--act: ${tone(a.color)}"` : `data-action="${esc(name || "comment")}"`;
+}
+function actionStyles() {
+  const s = document.createElement("style");
+  s.textContent = ACTIONS.map(a => `::highlight(hl-${a.name}) { background-color: color-mix(in srgb, ${tone(a.color)} 30%, transparent); }`).join("\n");
+  document.head.append(s);
+}
+
+// ---- server
+
+async function api(path, body) {
+  try {
+    const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: PROJECT, ...body }) });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || r.statusText, { err: true }); return null; }
+    await refresh(true);
+    return j;
+  } catch { toast("The review server isn't answering. Is it still running?", { err: true }); return null; }
+}
+const target = () => { const x = current(); return { batch: x.b, id: x.d.id }; };
+
+// ---- rail and overview
+
+function railItem({ d, k }) {
+  const n = threads(d).length + (d.comments || []).length, u = unsentCount(d);
+  return `<button class="ri ${st(d)} ${k === cur ? "active" : ""} ${working(d) ? "working" : stalled(d) ? "wait" : ""}" data-go="${esc(k)}">
+    <span class="dot"></span><span class="ch">${esc(NAMES[d.channel] || d.channel)}</span>
+    <span class="when">${esc(short(d.post_on))}</span>
+    <span class="cc">${working(d) ? SPIN : ""}${u ? `<span class="un">${u} unsent</span>` : ""}${n ? `<span class="n">${COMMENT}${n}</span>` : ""}</span>
+    <span class="snip">${esc(d.text.split("\n")[0])}</span></button>`;
+}
+function overview() {
+  const items = all(), count = s => items.filter(x => s === "all" || st(x.d) === s).length;
+  const busyN = items.filter(x => working(x.d)).length, stuck = items.filter(x => stalled(x.d)).length, todo = count("draft");
+  // One plain next step, so nobody has to remember the process.
+  const next = stuck
+    ? `<b>Next step:</b> Claude hasn't answered on ${stuck} post${stuck > 1 ? "s" : ""}. Run <code>marketing ${esc(PROJECT)}</code> in a terminal to start a session.`
+    : busyN
+    ? `<b>Next step:</b> ${SPIN} Claude is working on ${busyN} post${busyN > 1 ? "s" : ""}. Its answers show up here as they come in.`
+    : todo
+      ? `<b>Next step:</b> ${todo} post${todo > 1 ? "s are" : " is"} waiting. Open one, click <b>Open in</b> to post it, then click <b>Posted</b>. Don't like one? Select what's wrong and comment, or click <b>Skip</b> and say why.`
+      : `<b>Next step:</b> you're all caught up. Run <code>marketing ${esc(PROJECT)}</code> in a terminal for a new batch.`;
+  const f = (s, l) => `<button data-filter="${s}" class="${filter === s ? "on" : ""}">${l} · ${count(s)}</button>`;
+  const rows = data.batches.map(b => {
+    const ds = (b.drafts || []).filter(d => filter === "all" || st(d) === filter);
+    if (!ds.length) return "";
+    return `<section class="ov-batch"><div class="batch-head"><span class="label">${esc(b.batch)}</span>${b.note ? `<p>${esc(b.note)}</p>` : ""}</div>
+      ${ds.map(d => { const n = threads(d).length + (d.comments || []).length; return `<button class="ov-row ${st(d)}" data-go="${esc(key(b.batch, d.id))}">
+        <span class="pill ${st(d)}">${st(d)}</span><span class="pill channel">${esc(NAMES[d.channel] || d.channel)}</span>
+        <span class="w">${esc(short(d.post_on))}</span><span class="t">${esc(d.text)}</span><span class="ang">${esc(d.angle)}</span>
+        <span class="cc ${working(d) ? "working" : stalled(d) ? "wait" : ""}">${working(d) ? SPIN : ""}${n ? COMMENT + n : ""}</span></button>`; }).join("")}</section>`;
+  }).join("");
+  return `<div class="overview"><div class="wrap"><p class="intro">${next}</p>
+    <div class="filters">${f("draft", "To review")}${f("posted", "Posted")}${f("skipped", "Skipped")}${f("all", "All")}</div>
+    ${rows || `<p class="empty">${data.batches.length ? "Nothing here." : `No drafts yet. Ask Claude to "draft posts".`}</p>`}</div></div>`;
+}
+
+// ---- threads
+
+// Where a thread's quote sits in the text now: where it was, else the nearest
+// copy (Claude edits the JSON directly), else nowhere.
+function locate(t, text) {
+  const a = t.anchor;
+  if (!a || t.detached) return null;
+  if (text.slice(a.from, a.to) === a.quote) return a;
+  let best = -1;
+  for (let i = text.indexOf(a.quote); i !== -1; i = text.indexOf(a.quote, i + 1))
+    if (best === -1 || Math.abs(i - a.from) < Math.abs(best - a.from)) best = i;
+  return best === -1 ? null : { from: best, to: best + a.quote.length };
+}
+function paras(text) {
+  const out = [], re = /\n{2,}/g;
+  let at = 0, m;
+  while ((m = re.exec(text))) { out.push([at, m.index]); at = m.index + m[0].length; }
+  out.push([at, text.length]);
+  return out;
+}
+const paraOf = (text, off) => Math.max(0, paras(text).findIndex(([, to]) => off <= to)) + 1;
+function msgHTML(c, i) {
+  const del = c.draft && i !== undefined ? `<button class="ghost del" data-act="del-comment" data-i="${i}">Delete</button>` : "";
+  return `<div class="msg ${esc(c.who)}"><div><span class="who">${c.who === "claude" ? "claude" : "you"}</span><span class="at">${c.draft ? "unsent" : esc(c.at)}</span>${del}</div><p>${esc(c.text)}</p></div>`;
+}
+function card(d, t) {
+  const edit = t.kind === "edit", name = edit ? "edit" : t.label || "comment";
+  const label = edit ? "Edit" : t.label ? actionOf(t.label)?.label || t.label : "Comment";
+  const at = edit ? null : locate(t, d.text);
+  const quote = edit
+    ? `<p class="quote"><del>${esc(t.edit.before)}</del> → <ins>${esc(t.edit.after)}</ins></p>`
+    : `<p class="quote ${at ? "" : "gone"}">${esc(t.anchor.quote)}</p>`;
+  const where = edit ? "your edit" : at ? `¶${paraOf(d.text, at.from)}` : t.status === "resolved" ? "rewritten" : "text is gone";
+  const foot = {
+    draft: `<span class="grow">${edit ? "Claude re-reads it with the next batch" : "unsent"}</span><button class="ghost" data-act="del" data-t="${esc(t.id)}">Delete</button>`,
+    sent: working(d) ? `<span class="grow working">${SPIN} Claude is working on it</span>` : `<span class="grow">sent · no reply yet</span>`,
+    resolved: `<span class="grow">resolved · reply to reopen</span>`,
+    info: `<span class="grow">sent · needs no reply</span>`,
+  }[t.status] || "";
+  const isActive = t.id === active, rid = "reply-" + t.id;
+  return `<article class="card is-${esc(t.status)} ${isActive ? "active" : ""}" ${actAttr(name)} data-t="${esc(t.id)}">
+    <div class="card-head"><span class="pill act">${esc(label)}</span><span class="kind">${esc(where)}</span>
+      ${t.status === "info" ? "" : `<span class="pill st-${esc(t.status)}">${esc(t.status)}</span>`}</div>
+    ${quote}<div class="msgs">${(t.messages || []).map(m => msgHTML(m)).join("")}</div>
+    ${isActive && !edit ? `<div class="reply"><textarea id="${rid}" placeholder="${t.status === "draft" ? "Add to this comment" : "Reply (reopens it for the next batch)"}">${esc(unsent[cur + "|" + rid] || "")}</textarea></div>` : ""}
+    <div class="foot">${foot}</div></article>`;
+}
+function postCard(d) {
+  const cs = d.comments || [];
+  if (!cs.length) return "";
+  const hidden = showEarlier ? 0 : Math.max(0, cs.length - 3);
+  return `<span class="label">Whole post</span>
+    <article class="card" data-action="comment"><div class="card-head"><span class="pill">Post</span><span class="kind">${cs.length} message${cs.length > 1 ? "s" : ""}</span></div>
+    <div class="msgs">${hidden ? `<button class="ghost more" data-act="earlier">Show ${hidden} earlier</button>` : ""}${cs.slice(hidden).map((c, i) => msgHTML(c, hidden + i)).join("")}</div></article>`;
+}
+function workPill(d) {
+  if (working(d)) return `<span class="pill working" title="You sent a batch; Claude's answers show up here as they come in">${SPIN}Claude is working</span>`;
+  if (stalled(d)) return `<span class="pill wait" title="Run marketing ${esc(PROJECT)} in a terminal to start a session">no reply yet</span>`;
   return "";
 }
-
-function row(b, d) {
-  const st = d.status || "draft";
-  const thread = (d.comments || []).map(c =>
-    `<div class="msg ${esc(c.who)}"><div><span class="who">${c.who === "claude" ? "claude" : "you"}</span><span class="at">${esc(c.at)}</span></div><p>${esc(c.text)}</p></div>`).join("");
-  const cardLink = d.link && !d.text.includes("{link}");
-  return `<article class="row ${esc(st)}" data-batch="${esc(b)}" data-id="${esc(d.id)}">
-    <div class="draft">
-      <div class="meta">
-        <span class="pill channel">${esc(NAMES[d.channel] || d.channel)}</span>
-        <span class="pill">${esc(d.angle)}</span>
-        ${d.post_on && (d.status || "draft") === "draft" ? `<span class="pill wait">post ${esc(d.post_on)}</span>` : ""}
-        <span class="pill ${esc(st)}">${esc(st)}${d.status_at && st !== "draft" ? " " + esc(d.status_at) : ""}</span>
-        ${d.claude_text !== undefined ? `<span class="pill">edited by you</span>` : ""}
-        ${d.needs_claude ? `<span class="pill wait">waiting on claude</span>` : ""}
-        ${countHTML(d)}
-      </div>
-      <p class="text">${esc(d.text).replace("{link}", d.link ? `<span class="lk">${esc(d.link)}</span>` : "")}</p>
-      <div class="facts">
-        ${cardLink ? `<span><b>Link card:</b> ${esc(d.link)}</span>` : ""}
-        ${d.post_url ? `<span><b>Live post:</b> <a href="${esc(d.post_url)}" target="_blank" rel="noopener">${esc(d.post_url)}</a></span>` : ""}
-        ${st === "skipped" && d.skip_reason ? `<span><b>Skipped because:</b> ${esc(d.skip_reason)}</span>` : ""}
-        ${d.sources ? `<span><b>Sources:</b> ${esc(d.sources)}</span>` : ""}
-        ${d.flags && d.flags !== "none" ? `<span><b>Decide:</b> ${esc(d.flags)}</span>` : ""}
-      </div>
-      <div class="actions">
-        ${composeURL(d) ? `<a class="btn primary" href="${esc(composeURL(d))}" target="_blank" rel="noopener">Open in ${esc(NAMES[d.channel])}</a>` : ""}
-        <button data-act="copy" data-label="Copy post">Copy post</button>
-        ${cardLink ? `<button data-act="copylink" data-label="Copy link">Copy link</button>` : ""}
-        <button data-act="edit">Edit</button>
-        <button data-act="posted" class="${st === "posted" ? "on posted" : ""}">${st === "posted" && !d.post_url ? "Posted (add link)" : "Posted"}</button>
-        <button data-act="skip" class="${st === "skipped" ? "on" : ""}">Skip</button>
-        ${st !== "draft" ? `<button class="ghost" data-act="draft">Back to draft</button>` : ""}
-      </div>
-      ${panel(b, d)}
-      <div class="thread">${thread}
-        <form class="comment"><textarea id="c-${esc(b)}-${esc(d.id)}" placeholder="Comment for Claude (Cmd+Enter to send)"></textarea><button>Send</button></form>
-      </div>
+function sideHTML(d) {
+  const ts = threads(d), pos = t => locate(t, d.text)?.from ?? 1e9;
+  const open = ts.filter(t => t.kind === "text" && t.status !== "resolved").sort((a, b) => pos(a) - pos(b));
+  const edits = ts.filter(t => t.kind === "edit" && t.status === "draft");
+  // Threads Claude answered in the latest round stay in view until the next Send batch.
+  const answered = ts.filter(t => t.kind === "text" && t.status === "resolved" && t.sent_in === d.sends).sort((a, b) => pos(a) - pos(b));
+  const done = ts.filter(t => (t.kind === "text" && t.status === "resolved" && !answered.includes(t)) || (t.kind === "edit" && t.status !== "draft"));
+  const u = unsentCount(d), slop = ACTIONS.find(a => a.name === "slop");
+  const hint = `Select text in the post to comment on it${slop ? `, or press ${cap(slop.key)} to flag it as slop` : ""}.`;
+  return `<aside class="side">
+    <div class="head"><span class="label">Threads</span>${workPill(d)}<span class="grow"></span>
+      <button class="${u ? "primary" : ""}" data-act="send" ${u ? "" : "disabled"} title="Send everything unsent on this post to Claude">Send batch${u ? ` (${u})` : ""}</button></div>
+    <div class="tlist" id="tlist">
+      ${open.length ? `<span class="label">On the text</span>${open.map(t => card(d, t)).join("")}` : answered.length ? "" : `<p class="empty">${hint}</p>`}
+      ${answered.length ? `<span class="label">Claude answered</span>${answered.map(t => card(d, t)).join("")}` : ""}
+      ${edits.length ? `<span class="label">Your edits</span>${edits.map(t => card(d, t)).join("")}` : ""}
+      ${postCard(d)}
+      ${done.length ? `<button class="ghost more" data-act="resolved">${showResolved ? "Hide" : "Show"} ${done.length} resolved</button>${showResolved ? done.map(t => card(d, t)).join("") : ""}` : ""}
     </div>
-    <aside class="preview"><span class="label">Preview</span><div class="pvscroll pvslot">${preview(d)}</div>
-      <span class="pv-note">${esc(NOTES[d.channel] || "")}</span></aside>
-  </article>`;
+    <form class="compose"><textarea id="comment" aria-label="Comment on the whole post" placeholder="Comment on the whole post">${esc(unsent[cur + "|comment"] || "")}</textarea>
+      <div class="inline"><span class="hint"><kbd>⌘↵</kbd> to add · joins the batch</span><button>Add</button></div></form>
+  </aside>`;
 }
 
-function render() {
-  const el = document.getElementById("batches");
-  const typed = {};
-  el.querySelectorAll("textarea, input[type=text]").forEach(t => { typed[t.id] = t.value; });
-  const all = data.batches.flatMap(b => b.drafts || []);
-  const n = s => all.filter(d => (d.status || "draft") === s).length;
-  const waiting = all.filter(d => d.needs_claude).length;
-  document.getElementById("tally").innerHTML =
-    `<span class="pill draft">${n("draft")} to review</span><span class="pill posted">${n("posted")} posted</span>` +
-    (waiting ? `<span class="pill wait">${waiting} waiting on claude</span>` : "");
-  // One plain next step, so nobody has to remember the process.
-  document.getElementById("next").innerHTML = waiting
-    ? `<b>Next step:</b> Claude owes you ${waiting} answer${waiting > 1 ? "s" : ""}. If nothing shows up in a minute, run <code>marketing ${esc(PROJECT)}</code> in a terminal.`
-    : n("draft")
-      ? `<b>Next step:</b> ${n("draft")} post${n("draft") > 1 ? "s are" : " is"} waiting. On each one, click <b>Open in</b> to post it, then click <b>Posted</b>. Don't like one? Click <b>Skip</b> and say why.`
-      : `<b>Next step:</b> you're all caught up. Run <code>marketing ${esc(PROJECT)}</code> in a terminal for a new batch.`;
-  if (!data.batches.length) { el.innerHTML = `<p class="empty">No drafts yet. Ask Claude to "draft posts".</p>`; return; }
-  el.innerHTML = data.batches.map(b => `<section class="batch">
-      <div class="batch-head"><span class="label">${esc(b.batch)}</span>${b.note ? `<p>${esc(b.note)}</p>` : ""}</div>
-      ${byPostDay(b).map(d => row(b.batch, d)).join("")}</section>`).join("");
-  fitPreviews();
-  for (const [id, v] of Object.entries(typed)) {
-    const t = document.getElementById(id);
-    if (t) { t.value = v; if (t.dataset.live === "edit") livePreview(t); }
+// ---- the stage
+
+function statusPanel(d) {
+  if (panelOpen === "skip") return `<div class="panel">
+      <label for="skipnote">Why skip it? Optional, and the reason teaches the next batch.</label>
+      <div class="inline"><input type="text" id="skipnote" placeholder="e.g. too salesy, wrong angle for X">
+      <button class="primary" data-act="save-skip">Skip</button><button class="ghost" data-act="close">Cancel</button></div></div>`;
+  if (panelOpen === "posted") return `<div class="panel">
+      <label for="posturl">Link to the live post. Optional; lets the memo pull likes and replies later.</label>
+      <div class="inline"><input type="text" id="posturl" value="${esc(d.post_url || "")}" placeholder="https://x.com/...">
+      <button class="primary" data-act="save-posted">Mark posted</button><button class="ghost" data-act="close">Cancel</button></div></div>`;
+  return "";
+}
+function focusView() {
+  const q = queue(), list = flat();
+  if (!list.length) return `<div class="overview"><div class="wrap"><p class="empty">No drafts yet. Ask Claude to "draft posts".</p></div></div>`;
+  if (!cur || !byKey(cur)) cur = list[0].k;
+  const i = list.findIndex(x => x.k === cur), { d } = list[i], s = st(d);
+  const linkNote = !d.link ? "No link."
+    : d.text.includes("{link}") ? `<code>{link}</code> becomes <span class="lnk">${esc(d.link)}</span>`
+    : `Link rides as a card: <span class="lnk">${esc(d.link)}</span>`;
+  const keys = [`${"<kbd>C</kbd>"} comment on selection`, ...ACTIONS.filter(a => a.key).map(a => `${cap(a.key)} ${esc(a.label.toLowerCase())}`),
+    `<kbd>E</kbd> edit all`, `<kbd>J</kbd><kbd>K</kbd> next / previous`, `<kbd>[</kbd> queue`, `<kbd>]</kbd> threads`, `<kbd>A</kbd> all posts`];
+  return `<div class="focus ${rail ? "railopen" : "norail"} ${side ? "" : "noside"}">
+    <nav class="rail" aria-label="Queue"><span class="label">To review · ${q.todo.length}</span>${q.todo.map(railItem).join("")}
+      <span class="label">Done · ${q.done.length}</span>${q.done.map(railItem).join("")}</nav>
+    <section class="stage">
+      <div class="stagehead">
+        <span class="pill channel">${esc(NAMES[d.channel] || d.channel)}</span>
+        ${d.post_on && s === "draft" ? `<span class="pill wait">post ${esc(d.post_on)}</span>` : ""}
+        <span class="pill ${esc(s)}">${esc(s)}${d.status_at && s !== "draft" ? " " + esc(d.status_at) : ""}</span>
+        ${d.claude_text !== undefined ? `<span class="pill">edited by you</span>` : ""}
+        <span class="nav"><button data-act="rail" title="Show or hide the queue ( [ )" aria-label="Toggle queue">☰</button>
+          <button data-act="prev" title="Previous (k)" aria-label="Previous">‹</button>${i + 1} of ${list.length}<button data-act="next" title="Next (j)" aria-label="Next">›</button></span>
+      </div>
+      <div class="sheet">
+        <div class="shead"><span class="label">Post</span><span class="label" style="color:var(--ink38)">${esc(d.angle)}</span>${fresh[cur]?.ranges.length && fresh[cur].text === d.text ? `<span class="pill revised" title="What Claude rewrote is marked in green until you leave this post">revised by claude</span>` : ""}${countHTML(d)}
+          <button class="ghost" data-act="edit-all" title="Edit the whole post (e)">Edit all</button></div>
+        <div class="read" id="read"></div>
+        <div class="sfoot"><span>${linkNote}</span><span class="how">Select to comment · double-click a paragraph to edit</span></div>
+      </div>
+      ${d.flags && d.flags !== "none" ? `<div class="decide"><b>Decide:</b> ${esc(d.flags)}</div>` : ""}
+      <div class="actions">
+        ${composeURL(d) ? `<a class="btn" href="${esc(composeURL(d))}" target="_blank" rel="noopener">Open in ${esc(NAMES[d.channel])}</a>` : ""}
+        <button data-act="copy" data-label="Copy post">Copy post</button>
+        ${d.link && !d.text.includes("{link}") ? `<button data-act="copylink" data-label="Copy link">Copy link</button>` : ""}
+        <button data-act="posted" class="${s === "posted" ? "on posted" : ""}">${s === "posted" && !d.post_url ? "Posted (add link)" : "Posted"}</button>
+        <button data-act="skip" class="${s === "skipped" ? "on" : ""}">Skip</button>
+        ${s !== "draft" ? `<button class="ghost" data-act="draft">Back to draft</button>` : ""}
+      </div>
+      ${statusPanel(d)}
+      <div class="pvsec">
+        <div class="phead"><span class="label">How it shows on ${esc(NAMES[d.channel] || d.channel)}</span>
+          <button class="ghost" data-act="pv">${showPreview ? "Hide preview" : "Show preview"}</button></div>
+        ${showPreview ? `<div class="pvfit"><div class="pvslot">${preview(d)}</div></div><span class="pv-note">${esc(NOTES[d.channel] || "")}</span>` : ""}
+      </div>
+      <div class="facts">
+        ${d.post_url ? `<span><b>Live post:</b> <a href="${esc(d.post_url)}" target="_blank" rel="noopener">${esc(d.post_url)}</a></span>` : ""}
+        ${s === "skipped" && d.skip_reason ? `<span><b>Skipped because:</b> ${esc(d.skip_reason)}</span>` : ""}
+        ${d.sources ? `<span><b>Sources:</b> ${esc(d.sources)}</span>` : ""}
+      </div>
+      <div class="keys">${keys.map(k => `<span>${k}</span>`).join("")}</div>
+      <div class="float selbar" id="selbar" hidden>
+        <button data-act="sel-comment" title="Comment (c)"><span class="sw" data-action="comment"></span>Comment <kbd>C</kbd></button>
+        ${ACTIONS.map(a => `<button data-act="sel-action" data-a="${esc(a.name)}"><span class="sw" ${actAttr(a.name)}></span>${esc(a.label)} ${cap(a.key)}</button>`).join("")}
+      </div>
+      <div class="float" id="composer" hidden></div>
+    </section>
+    ${sideHTML(d)}</div>`;
+}
+
+// ---- the readable text: paragraphs of text nodes, indexed so a DOM selection maps to offsets in d.text
+
+let IDX = [];  // [{node, start}] for every text node, in order
+function buildRead() {
+  const el = document.getElementById("read");
+  if (!el) return;
+  const d = current().d, text = d.text;
+  IDX = []; el.replaceChildren();
+  if (editing && editing.from === 0 && editing.to === text.length) { el.append(editBox(text)); return; }
+  for (const [from, to] of paras(text)) {
+    if (editing && editing.from === from && editing.to === to) { el.append(editBox(text.slice(from, to))); continue; }
+    const p = document.createElement("p");
+    p.dataset.from = from; p.dataset.to = to;
+    let at = 0;
+    for (const part of text.slice(from, to).split(/(\{link\})/)) {
+      if (!part) continue;
+      const node = document.createTextNode(part);
+      if (part === "{link}") { const s = document.createElement("span"); s.className = "lk"; s.title = d.link || ""; s.append(node); p.append(s); }
+      else p.append(node);
+      IDX.push({ node, start: from + at });
+      at += part.length;
+    }
+    el.append(p);
   }
 }
-// Drafts still to post come first, soonest post_on day first; posted and
-// skipped ones follow in file order. post_on ("Tue Oct 13, morning") has no
-// year, so it takes the batch's year, rolling into the next year when that
-// would land before the batch was drafted.
-function byPostDay(b) {
-  const drafted = new Date(b.batch + "T00:00");
-  const day = d => {
-    const t = new Date(`${(d.post_on || "").split(",")[0]} ${drafted.getFullYear()}`);
-    if (isNaN(t)) return Infinity;
-    if (t < drafted) t.setFullYear(t.getFullYear() + 1);
-    return t.getTime();
-  };
-  const todo = d => (d.status || "draft") === "draft";
-  const drafts = b.drafts || [];
-  return [...drafts.filter(todo).sort((x, y) => day(x) - day(y)), ...drafts.filter(d => !todo(d))];
+function editBox(value) {
+  const card = document.createElement("div"), whole = editing.from === 0 && editing.to === current().d.text.length;
+  card.className = "lift";
+  card.innerHTML = `<textarea id="editbox" rows="1" spellcheck="true" aria-label="Edit text"></textarea>
+    <div class="grow-foot"><div class="foot">
+      <span class="pill">${whole ? "whole post" : "¶" + paraOf(current().d.text, editing.from)}</span>
+      <span class="hint"><span><kbd>⌘↵</kbd> save</span><span><kbd>esc</kbd> done</span></span>
+      <span class="spacer"></span>
+      <button class="ghost" data-act="edit-cancel" title="Close without saving">Cancel</button>
+      <button class="primary" data-act="edit-save" title="Save · Claude reads it with the next batch">Save</button>
+    </div></div>`;
+  card.querySelector("textarea").value = unsent[cur + "|editbox"] ?? value;
+  return card;
 }
-function livePreview(ta) {
-  const r = ta.closest(".row"), d = find(r.dataset.batch, r.dataset.id);
-  ta.closest(".panel").querySelector(".count").outerHTML = countHTML(d, ta.value);
-  r.querySelector(".pvslot").innerHTML = preview(d, ta.value);
-  fitPreviews(r);
+function offsetOf(node, off) {
+  const hit = IDX.find(x => x.node === node);
+  if (hit) return hit.start + off;
+  // An element boundary: the text node at or after that child.
+  const kid = node.childNodes[off];
+  const first = kid && IDX.find(x => kid === x.node || kid.contains(x.node));
+  if (first) return first.start;
+  const before = IDX.filter(x => node.contains(x.node)).pop();
+  return before ? before.start + before.node.length : null;
+}
+function rangeFor(from, to) {
+  const at = (o, end) => {
+    const x = IDX.find(x => (end ? o > x.start : o >= x.start) && o <= x.start + x.node.length) || IDX.find(x => x.start >= o);
+    return x ? [x.node, Math.max(0, Math.min(x.node.length, o - x.start))] : null;
+  };
+  const a = at(from, false), b = at(to, true);
+  if (!a || !b) return null;
+  const r = document.createRange(); r.setStart(...a); r.setEnd(...b);
+  return r;
+}
+// Highlights use the CSS Custom Highlight API, so the text's DOM stays plain.
+function paint() {
+  if (!window.Highlight || !CSS.highlights) return;
+  CSS.highlights.clear();
+  const x = view === "focus" && current();
+  if (!x) return;
+  const groups = {};
+  for (const t of threads(x.d)) {
+    if (t.kind !== "text" || t.status === "resolved") continue;
+    const at = locate(t, x.d.text), r = at && rangeFor(at.from, at.to);
+    if (!r) continue;
+    const g = "hl-" + (actionOf(t.label) ? t.label : "comment");
+    (groups[g] ||= []).push(r);
+    if (t.id === active) CSS.highlights.set("hl-active", new Highlight(r));
+  }
+  for (const [g, rs] of Object.entries(groups)) CSS.highlights.set(g, new Highlight(...rs));
+  const f = fresh[cur];
+  if (f && f.text === x.d.text) CSS.highlights.set("hl-new", new Highlight(...f.ranges.map(([a, b]) => rangeFor(a, b)).filter(Boolean)));
+  if (compose) { const r = rangeFor(compose.from, compose.to); if (r) CSS.highlights.set("hl-pending", new Highlight(r)); }
 }
 
+// ---- selection toolbar and composer, as in redline
+
+function updateSelection() {
+  const bar = document.getElementById("selbar"), read = document.getElementById("read");
+  if (!bar) return;
+  const s = document.getSelection();
+  if (compose || editing || !s || s.isCollapsed || !s.rangeCount || !read.contains(s.getRangeAt(0).commonAncestorContainer)) {
+    bar.hidden = true; sel = null; catchUp(); return;
+  }
+  const r = s.getRangeAt(0), text = current().d.text;
+  let from = offsetOf(r.startContainer, r.startOffset), to = offsetOf(r.endContainer, r.endOffset);
+  if (from == null || to == null) return;
+  // Drop the whitespace a triple-click or drag picks up.
+  while (from < to && /\s/.test(text[from])) from++;
+  while (to > from && /\s/.test(text[to - 1])) to--;
+  if (to <= from) { bar.hidden = true; sel = null; return; }
+  sel = { from, to };
+  bar.hidden = false;
+  place(bar, r.getClientRects()[0] || r.getBoundingClientRect(), "above");
+}
+// place floats el in the stage just above (or below) a rect, kept inside the column.
+function place(el, rect, where) {
+  const stage = document.querySelector(".stage"), sr = stage.getBoundingClientRect();
+  const top = where === "above" && rect.top - sr.top > 44
+    ? rect.top - sr.top + stage.scrollTop - el.offsetHeight - 8
+    : rect.bottom - sr.top + stage.scrollTop + 8;
+  el.style.top = top + "px";
+  el.style.left = Math.max(8, Math.min(rect.left - sr.left, stage.clientWidth - el.offsetWidth - 8)) + "px";
+}
+function openComposer(action) {
+  if (!sel) return;
+  compose = { ...sel, action };
+  const a = actionOf(action), text = current().d.text, r = rangeFor(sel.from, sel.to);
+  document.getSelection().removeAllRanges();
+  document.getElementById("selbar").hidden = true;
+  const el = document.getElementById("composer");
+  el.innerHTML = `<div class="composer" ${actAttr(action || "comment")}>
+    <div class="card-head">${a ? `<span class="pill act">${esc(a.label)}</span>` : `<span class="pill new">New</span>`}<span class="kind">¶${paraOf(text, compose.from)}</span></div>
+    <p class="quote">${esc(text.slice(compose.from, compose.to))}</p>
+    <textarea id="cbox" class="${a ? "short" : ""}" placeholder="${a ? (a.note === "required" ? "Add a note" : "Add a note (optional)") : "Leave a comment"}" aria-label="${a ? "Note" : "Comment"}"></textarea>
+    <div class="row"><span class="hint">${a ? "<kbd>↵</kbd> add" : "<kbd>⌘↵</kbd> add"} · <kbd>esc</kbd> cancel</span>
+      <button class="ghost" data-act="c-cancel">Cancel</button><button class="primary" data-act="c-add">Add</button></div></div>`;
+  el.hidden = false;
+  if (r) place(el, [...r.getClientRects()].pop() || r.getBoundingClientRect(), "below");
+  paint();
+  document.getElementById("cbox").focus();
+}
+function closeComposer() {
+  compose = null;
+  const el = document.getElementById("composer"); if (el) el.hidden = true;
+  paint(); catchUp();
+}
+async function addThread(from, to, label, text) {
+  const d = current().d;
+  const j = await api("/api/thread", { ...target(), label, text, anchor: { quote: d.text.slice(from, to), from, to } });
+  if (j) { active = j.thread; render(); flashCard(j.thread); }
+  return j;
+}
+async function submitComposer() {
+  const c = compose, note = document.getElementById("cbox").value.trim(), a = actionOf(c.action);
+  if (!a && !note) return;
+  if (a && a.note === "required" && !note) return;
+  closeComposer();
+  await addThread(c.from, c.to, c.action, note);
+}
+// An action's key flags the selection at once, skipping an optional note.
+async function quickAction(a) {
+  if (a.note === "required") return openComposer(a.name);
+  const s = sel;
+  document.getSelection().removeAllRanges(); sel = null;
+  const j = await addThread(s.from, s.to, a.name, "");
+  if (j) toast(`Flagged as ${a.label.toLowerCase()}. It goes to Claude with the next batch.`, { action: a.name, undo: j.thread });
+}
+function flashCard(id) {
+  const c = document.querySelector(`.side .card[data-t="${CSS.escape(id)}"]`);
+  if (c) { c.scrollIntoView({ block: "nearest" }); c.classList.add("flash"); }
+}
+let toastTimer;
+function toast(msg, { err, action, undo } = {}) {
+  const el = document.getElementById("toast");
+  el.className = "toast" + (err ? " err" : "");
+  el.innerHTML = `${action ? `<span class="sw" ${actAttr(action)}></span>` : ""}<span>${esc(msg)}</span>${undo ? `<button class="ghost" data-act="undo" data-t="${esc(undo)}">Undo</button>` : ""}`;
+  el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (el.hidden = true), err ? 7000 : 4000);
+}
+
+// ---- editing a paragraph, or the whole post, in place
+
+// Only #read is rebuilt, never the whole view, so nothing around the paragraph moves or scrolls.
+const LIFT_MS = 160;
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const settle = () => new Promise(r => setTimeout(r, reduced() ? 0 : LIFT_MS));
+// pick: the text range selected when the edit opened (a double-click selects a word), kept in the box.
+function startEdit(from, to, pick) {
+  if (editing) return;
+  stash(); delete unsent[cur + "|editbox"];
+  closeComposer();
+  editing = { from, to, before: current().d.text.slice(from, to) };
+  openCard(pick ? [pick.from - from, pick.to - from] : null);
+}
+function openCard(range) {
+  buildRead(); paint();
+  const ta = document.getElementById("editbox"), card = ta.closest(".lift");
+  grow(ta);
+  ta.focus({ preventScroll: true });
+  const end = ta.value.length;
+  ta.setSelectionRange(...(range && range[0] >= 0 && range[1] <= end ? range : [end, end]));
+  void card.offsetWidth; // flush the resting state so the lift animates
+  card.classList.add("lifted");
+}
+// Save (or, unchanged, just close): the card settles back into the page, then the new text takes its place.
+async function commitEdit(cancel) {
+  if (!editing || editing.closing) return;
+  const ta = document.getElementById("editbox"), e = editing, card = ta?.closest(".lift");
+  // Clicking another post saves this one: hold on to which post it is across the settle.
+  const after = ta ? ta.value : e.before, where = target(), k = cur;
+  e.closing = true;
+  card?.classList.remove("lifted");
+  card?.setAttribute("aria-busy", "true");
+  ta?.blur();
+  await settle();
+  if (editing === e) editing = null;
+  delete unsent[k + "|editbox"];
+  if (cancel || after === e.before) { if (k === cur) { buildRead(); paint(); } return catchUp(); }
+  if (await api("/api/edit", { ...where, from: e.from, to: e.to, before: e.before, text: after }) || k !== cur) return;
+  // On a conflict the card opens again with Joel's text in it.
+  editing = { from: e.from, to: e.to, before: e.before }; unsent[k + "|editbox"] = after;
+  openCard(null);
+}
+// field-sizing: content sizes the box as it's typed in; elsewhere, measure it without letting it collapse first,
+// which would shrink the column and scroll it.
+function grow(ta) {
+  if (CSS.supports("field-sizing", "content")) return;
+  const card = ta.closest(".lift");
+  card.style.minHeight = card.offsetHeight + "px";
+  ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px";
+  card.style.minHeight = "";
+}
+function livePreview() {
+  const ta = document.getElementById("editbox"), d = current().d, slot = document.querySelector(".pvslot");
+  if (!ta) return;
+  const text = d.text.slice(0, editing.from) + ta.value + d.text.slice(editing.to);
+  document.querySelector(".shead .count").outerHTML = countHTML(d, text);
+  if (slot) { slot.innerHTML = preview(d, text); fitPreviews(slot); }
+}
+
+// ---- render
+
+function stash() {
+  document.querySelectorAll("#comment, #editbox, [id^=reply-]").forEach(t => { unsent[cur + "|" + t.id] = t.value; });
+}
+// Shrink the render to fit the column, so it never forces a sideways scroll.
+function fitRender() {
+  const box = document.querySelector(".pvfit");
+  if (!box) return;
+  box.querySelector(".pvslot").style.zoom = Math.min(1, box.clientWidth / box.querySelector(".pv").offsetWidth);
+  fitPreviews(box);
+}
+function render() {
+  stash();
+  deferred = false;
+  const items = all(), n = s => items.filter(x => st(x.d) === s).length;
+  const busyN = items.filter(x => working(x.d)).length, stuck = items.filter(x => stalled(x.d)).length;
+  lastWork = workSig();
+  document.getElementById("tally").innerHTML = `<span class="pill draft">${n("draft")} to review</span><span class="pill posted">${n("posted")} posted</span>` +
+    (busyN ? `<span class="pill working">${SPIN}Claude is working on ${busyN}</span>` : "") +
+    (stuck ? `<span class="pill wait">${stuck} with no reply yet</span>` : "");
+  document.querySelectorAll(".tabs button").forEach(t => t.classList.toggle("on", t.dataset.view === view));
+  const scroll = [document.querySelector(".stage")?.scrollTop, document.getElementById("tlist")?.scrollTop];
+  document.getElementById("view").innerHTML = view === "all" ? overview() : focusView();
+  if (document.querySelector(".stage")) {
+    // Fill the text in before putting the scroll back: an empty #read is shorter, and the scroll would clamp to it.
+    buildRead(); fitRender();
+    document.querySelector(".stage").scrollTop = scroll[0] || 0;
+    document.getElementById("tlist").scrollTop = scroll[1] || 0;
+    const ta = document.getElementById("editbox");
+    if (ta) { grow(ta); ta.closest(".lift").classList.toggle("lifted", !editing.closing); }
+    const panel = document.querySelector(".stage .panel input"); if (panel) panel.focus();
+  }
+  paint();
+  const f = view === "focus" && fresh[cur];
+  if (f?.ids.length) { for (const id of f.ids) document.querySelector(`.side .card[data-t="${CSS.escape(id)}"]`)?.classList.add("flash"); f.ids = []; }
+}
+addEventListener("resize", fitRender);
+
+function go(v, k) {
+  stash();
+  view = v;
+  if (k && k !== cur) { delete fresh[cur]; cur = k; active = null; editing = null; compose = null; panelOpen = null; showEarlier = false; showResolved = false; }
+  const x = current();
+  try { history.replaceState(null, "", location.search + "#" + (v === "all" ? "all" : x ? x.d.id : "")); } catch {}
+  render();
+  if (v === "focus") document.querySelector(".stage")?.scrollTo(0, 0);
+}
+function step(n) {
+  const list = flat(), i = list.findIndex(x => x.k === cur);
+  go("focus", list[Math.max(0, Math.min(list.length - 1, i + n))].k);
+}
+// After Posted or Skip, move on to the next post still to review.
+function advance() {
+  const next = queue().todo[0];
+  if (next) go("focus", next.k); else go("all");
+}
+
+// Don't redraw under someone mid-sentence, mid-selection, or mid-edit; catch up when they're done.
 function typing() {
   const a = document.activeElement;
   return a && a.matches("textarea, input[type=text]") && a.value.trim() !== "";
 }
+const busy = () => typing() || compose || editing || sel;
+function catchUp() { if (deferred && !busy()) render(); }
+// Claude's messages on each post, so a poll can tell when it answered.
+function said(dat) {
+  const m = {};
+  for (const b of dat.batches || []) for (const d of b.drafts || []) {
+    const ids = threads(d).filter(t => t.messages?.at(-1)?.who === "claude").map(t => t.id);
+    const n = threads(d).reduce((n, t) => n + (t.messages || []).filter(x => x.who === "claude").length, 0)
+      + (d.comments || []).filter(c => c.who === "claude").length;
+    m[key(b.batch, d.id)] = { n, ids, text: d.text, base: d.sent_text };
+  }
+  return m;
+}
+function spotAnswers(was) {
+  const before = said(was), now = said(data), hits = [];
+  for (const [k, x] of Object.entries(now)) {
+    const b = before[k];
+    if (!b || x.n <= b.n) continue;
+    const ids = x.ids.filter(id => !b.ids.includes(id));
+    // Claude rewrites the text and then answers thread by thread, maybe across polls: mark against the
+    // text as it was sent, not as the last poll saw it.
+    const base = x.base ?? b.text;
+    fresh[k] = { ids, text: x.text, ranges: base === x.text ? [] : changed(base, x.text) };
+    hits.push(k);
+  }
+  if (!hits.length) return;
+  const x = byKey(hits[0]), n = fresh[hits[0]].ids.length, revised = fresh[hits[0]].ranges.length;
+  toast(hits.length > 1 ? `Claude answered on ${hits.length} posts.`
+    : hits[0] !== cur || view !== "focus" ? `Claude answered on ${NAMES[x.d.channel] || x.d.channel} ${short(x.d.post_on)}.`
+    : `Claude answered${n ? ` ${n} comment${n > 1 ? "s" : ""}` : ""}${revised ? " and revised the post (marked in green)" : ""}.`);
+}
+// The stretches of now that aren't in old, by a word-level LCS (posts are short).
+function changed(old, now) {
+  const tok = t => t.match(/\s+|\S+/g) || [], a = tok(old), b = tok(now), n = a.length, m = b.length;
+  if (n * m > 4e6) return [];
+  const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out = [];
+  for (let i = 0, j = 0, at = 0; j < m; ) {
+    if (i < n && a[i] === b[j]) { at += b[j++].length; i++; continue; }
+    if (i < n && L[i + 1][j] >= L[i][j + 1]) { i++; continue; }
+    const end = at + b[j++].length, prev = out.at(-1);
+    // One mark across a run of new words, spaces between them included.
+    if (prev && !now.slice(prev[1], at).trim()) prev[1] = end; else out.push([at, end]);
+    at = end;
+  }
+  return out.filter(([f, t]) => now.slice(f, t).trim()).map(([f, t]) => {
+    while (/\s/.test(now[f])) f++;
+    while (/\s/.test(now[t - 1])) t--;
+    return [f, t];
+  });
+}
+let lastWork = "";
+const workSig = () => all().map(x => working(x.d) ? "w" : stalled(x.d) ? "s" : "").join("");
 async function refresh(force) {
   try {
     const txt = await (await fetch("/api/drafts?" + q())).text();
-    if (!force && txt === last) return;
-    last = txt; data = JSON.parse(txt);
-    if (data.error) { document.getElementById("batches").innerHTML = `<p class="empty">${esc(data.error)}</p>`; return; }
+    if (!force && txt === last && workSig() === lastWork) return;
+    last = txt;
+    const was = data; data = JSON.parse(txt);
+    if (was.batches.length) spotAnswers(was);
+    if (data.error) { document.getElementById("view").innerHTML = `<p class="empty" style="padding:24px 16px">${esc(data.error)}</p>`; return; }
     if (!PROJECT) PROJECT = data.project;
-    // Don't redraw under someone mid-sentence; catch up when they leave the field.
-    if (typing() && !force) { deferred = true; return; }
+    if (busy() && !force) { deferred = true; return; }
     render();
   } catch { /* server restarting; try again next tick */ }
 }
-document.addEventListener("focusout", () => setTimeout(() => { if (deferred && !typing()) { deferred = false; render(); } }, 0));
+document.addEventListener("focusout", () => setTimeout(catchUp, 0));
 
+function threadAt(x, y) {
+  const pos = document.caretPositionFromPoint?.(x, y), rng = !pos && document.caretRangeFromPoint?.(x, y);
+  const o = pos ? offsetOf(pos.offsetNode, pos.offset) : rng ? offsetOf(rng.startContainer, rng.startOffset) : null;
+  if (o == null) return null;
+  const d = current().d;
+  return threads(d).map(t => ({ t, at: t.kind === "text" && t.status !== "resolved" && locate(t, d.text) }))
+    .filter(({ at }) => at && at.from <= o && o < at.to)
+    .sort((a, b) => (a.at.to - a.at.from) - (b.at.to - b.at.from))[0]?.t;
+}
+function focusThread(id, scrollText) {
+  stash(); active = id; render(); flashCard(id);
+  const d = current().d, t = threads(d).find(t => t.id === id), at = t && t.kind === "text" && locate(t, d.text);
+  if (scrollText && at) rangeFor(at.from, at.to)?.startContainer.parentElement.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+// ---- events
+
+document.addEventListener("selectionchange", () => requestAnimationFrame(updateSelection));
+document.addEventListener("mousedown", e => {
+  // Keep the text selection when pressing a toolbar button.
+  if (e.target.closest("#selbar")) e.preventDefault();
+  else if (compose && !e.target.closest("#composer")) closeComposer();
+  if (editing && !e.target.closest(".lift")) commitEdit(false);
+});
+document.addEventListener("mouseup", e => {
+  if (!e.target.closest("#read") || !document.getSelection().isCollapsed) return;
+  const t = threadAt(e.clientX, e.clientY);
+  if (t) focusThread(t.id, false);
+});
+document.addEventListener("dblclick", e => {
+  const p = e.target.closest("#read p[data-from]");
+  if (!p) return;
+  // Keep the word the double-click selected selected in the box.
+  const s = document.getSelection(), r = s.rangeCount && s.getRangeAt(0);
+  const pick = r && { from: offsetOf(r.startContainer, r.startOffset), to: offsetOf(r.endContainer, r.endOffset) };
+  s.removeAllRanges(); sel = null;
+  startEdit(+p.dataset.from, +p.dataset.to, pick && pick.from != null && pick.to != null ? pick : null);
+});
 document.addEventListener("click", async e => {
-  const btn = e.target.closest("button[data-act]");
-  if (!btn) return;
-  const r = btn.closest(".row"), b = r.dataset.batch, id = r.dataset.id, k = key(b, id), d = find(b, id);
-  const val = sel => (r.querySelector(sel)?.value ?? "").trim();
-  switch (btn.dataset.act) {
-    case "li-more": return btn.closest(".bodywrap").classList.remove("clamped");
-    case "copy": return copy(btn, postText(d));
-    case "copylink": return copy(btn, d.link);
-    case "edit": case "skip": case "posted":
-      open[k] = open[k] === btn.dataset.act ? undefined : btn.dataset.act; return render();
-    case "close": delete open[k]; return render();
-    case "save-edit":
-      if (await api("/api/edit", { batch: b, id, text: r.querySelector("textarea.edit").value })) { delete open[k]; render(); }
+  const t = e.target.closest("[data-go],[data-view],[data-filter],button[data-act],.side .card[data-t]");
+  if (!t) return;
+  if (t.dataset.go) return go("focus", t.dataset.go);
+  if (t.dataset.view) return go(t.dataset.view);
+  if (t.dataset.filter) { filter = t.dataset.filter; return render(); }
+  if (!t.dataset.act) { if (t.dataset.t !== active && !e.target.closest("textarea")) focusThread(t.dataset.t, true); return; }
+  e.stopPropagation();
+  const x = current(), d = x?.d;
+  const val = id => (document.getElementById(id)?.value ?? "").trim();
+  switch (t.dataset.act) {
+    case "li-more": return t.closest(".bodywrap").classList.remove("clamped");
+    case "rail": rail = !rail; return render();
+    case "prev": return step(-1);
+    case "next": return step(1);
+    case "copy": return copy(t, postText(d));
+    case "copylink": return copy(t, d.link);
+    case "pv": showPreview = !showPreview; try { localStorage.setItem("pv", showPreview ? "1" : "0"); } catch {} return render();
+    case "edit-all": return startEdit(0, d.text.length);
+    case "edit-save": return commitEdit(false);
+    case "edit-cancel": return commitEdit(true);
+    case "posted": case "skip": panelOpen = panelOpen === t.dataset.act ? null : t.dataset.act; return render();
+    case "close": panelOpen = null; return render();
+    case "save-skip": if (await api("/api/status", { ...target(), status: "skipped", reason: val("skipnote") })) { panelOpen = null; advance(); } return;
+    case "save-posted": if (await api("/api/status", { ...target(), status: "posted", url: val("posturl") })) { panelOpen = null; advance(); } return;
+    case "draft": return api("/api/status", { ...target(), status: "draft" });
+    case "sel-comment": return openComposer(null);
+    case "sel-action": { const a = actionOf(t.dataset.a); return a.note === "none" ? quickAction(a) : openComposer(a.name); }
+    case "c-add": return submitComposer();
+    case "c-cancel": return closeComposer();
+    case "del": return api("/api/delete", { ...target(), thread: t.dataset.t });
+    case "undo": document.getElementById("toast").hidden = true; return api("/api/delete", { ...target(), thread: t.dataset.t });
+    case "del-comment": return api("/api/delete", { ...target(), comment: +t.dataset.i });
+    case "earlier": showEarlier = true; return render();
+    case "resolved": showResolved = !showResolved; return render();
+    case "send": {
+      const n = unsentCount(d);
+      t.disabled = true; t.innerHTML = `${SPIN} Sending`;
+      if (await api("/api/send", target())) toast(`Sent ${n} to Claude.`); else render();
       return;
-    case "save-skip":
-      if (await api("/api/status", { batch: b, id, status: "skipped", reason: val(".panel input") })) { delete open[k]; render(); }
-      return;
-    case "save-posted":
-      if (await api("/api/status", { batch: b, id, status: "posted", url: val(".panel input") })) { delete open[k]; render(); }
-      return;
-    case "draft": return api("/api/status", { batch: b, id, status: "draft" });
+    }
   }
 });
-document.addEventListener("input", e => { if (e.target.dataset.live === "edit") livePreview(e.target); });
-async function send(form) {
-  const ta = form.querySelector("textarea"), r = form.closest(".row");
-  const text = ta.value.trim();
+document.addEventListener("input", e => { if (e.target.id === "editbox") { grow(e.target); livePreview(); } });
+async function addPostComment() {
+  const ta = document.getElementById("comment"), text = ta.value.trim();
   if (!text) return;
-  ta.value = "";
-  await api("/api/comment", { batch: r.dataset.batch, id: r.dataset.id, text });
+  ta.value = ""; delete unsent[cur + "|comment"];
+  if (await api("/api/comment", { ...target(), text })) { const l = document.getElementById("tlist"); l.scrollTop = l.scrollHeight; }
+  else ta.value = text;
 }
-document.addEventListener("submit", e => { e.preventDefault(); send(e.target); });
+async function addReply(ta) {
+  const text = ta.value.trim(), thread = ta.id.slice("reply-".length);
+  if (!text) return;
+  ta.value = ""; delete unsent[cur + "|" + ta.id];
+  if (!(await api("/api/reply", { ...target(), thread, text }))) ta.value = text;
+}
+document.addEventListener("submit", e => { e.preventDefault(); addPostComment(); });
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && e.target.closest("form.comment")) { e.preventDefault(); send(e.target.form); }
+  const mod = e.metaKey || e.ctrlKey, t = e.target;
+  const a = view === "focus" && ACTIONS.find(a => keyMatches(e, parseKey(a.key)));
+  if (a && !compose && !editing) { updateSelection(); if (sel) { e.preventDefault(); quickAction(a); } return; }
+  if (t.id === "cbox") {
+    // An action's note is short: Enter adds it (Shift+Enter for a new line).
+    if (e.key === "Enter" && (mod || (compose?.action && !e.shiftKey))) { e.preventDefault(); submitComposer(); }
+    else if (e.key === "Escape") { e.preventDefault(); closeComposer(); }
+    return;
+  }
+  if (t.id === "editbox") {
+    // Esc finishes the edit as clicking away does, saving what was typed; Cancel drops it.
+    if ((e.key === "Enter" && mod) || e.key === "Escape") { e.preventDefault(); commitEdit(false); }
+    return;
+  }
+  if (t.matches("textarea, input")) {
+    if (e.key === "Enter" && mod && t.matches("textarea")) { e.preventDefault(); t.id === "comment" ? addPostComment() : addReply(t); }
+    if (e.key === "Enter" && t.id === "skipnote") document.querySelector('[data-act="save-skip"]').click();
+    if (e.key === "Enter" && t.id === "posturl") document.querySelector('[data-act="save-posted"]').click();
+    if (e.key === "Escape") t.blur();
+    return;
+  }
+  if (mod || e.altKey) return;
+  if (view === "focus") {
+    if (e.key === "Escape") {
+      if (sel) { document.getSelection().removeAllRanges(); return; }
+      if (active) { active = null; return render(); }
+      return go("all");
+    }
+    if (e.key === "c") { e.preventDefault(); updateSelection(); return sel ? openComposer(null) : document.getElementById("comment")?.focus(); }
+    if (e.key === "j") step(1);
+    else if (e.key === "k") step(-1);
+    else if (e.key === "[") { rail = !rail; render(); }
+    else if (e.key === "]") { side = !side; render(); }
+    else if (e.key === "p") document.querySelector('[data-act="pv"]')?.click();
+    else if (e.key === "e" && current()) { e.preventDefault(); startEdit(0, current().d.text.length); }
+    else if (e.key === "a") go("all");
+  } else if (e.key === "f" || e.key === "Escape") go("focus");
 });
+
 async function setup() {
   try {
-    const [me, list] = await Promise.all([fetch("/api/me").then(r => r.json()), fetch("/api/projects").then(r => r.json())]);
+    const [me, list, acts] = await Promise.all(["/api/me", "/api/projects", "/api/actions"].map(u => fetch(u).then(r => r.json())));
     for (const ch of ["bluesky", "x", "linkedin", "reddit"]) Object.assign(ME[ch], me[ch] || {});
+    ACTIONS = acts.actions || [];
+    actionStyles();
     const projects = list.projects || [];
     if (!PROJECT && projects.length === 1) PROJECT = projects[0].slug;
     const p = projects.find(x => x.slug === PROJECT);
@@ -532,6 +1323,11 @@ async function setup() {
     }
   } catch { /* previews fall back to blank names */ }
   await refresh(true);
+  // Open the post named in the address (#<draft id>), or the overview (#all).
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h === "all") view = "all";
+  else if (h) { const x = all().find(x => x.d.id === h); if (x) cur = x.k; }
+  render();
   setInterval(refresh, 2000);
 }
 setup();
