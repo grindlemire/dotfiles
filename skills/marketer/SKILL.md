@@ -55,7 +55,7 @@ action in a sentence or two. No menus, no recap of the system.
 | State | Do |
 |---|---|
 | Any draft has `needs_claude` | Handle them (see "Catch up first"), then go on down this table. |
-| Any draft is still `draft` | Open the page for him (`bash ~/.claude/skills/marketer/review/open-page "http://127.0.0.1:8787/?project=<slug>"`, sandbox disabled; plain `open` lands in Little Arc, where Open in replaces the page). Say: "N posts are waiting. Click Open in X/Bluesky/LinkedIn, post it, then click Posted. Skip any you don't like and say why." Then stay and respond to his events. |
+| Any draft is still `draft` | Open the page for him (`bash ~/.claude/skills/marketer/review/open-page "http://127.0.0.1:8787/?project=<slug>"`, sandbox disabled; plain `open` lands in Little Arc, where Open in replaces the page). Say: "N posts are waiting. Click Open in X/Bluesky/LinkedIn, post it, then click Posted. Select anything off to comment or flag it as slop, then Send batch. Skip any you don't like and say why." Then stay and respond to his events. |
 | Every draft is posted or skipped (or none exist) | Draft a new batch (Mode: draft posts), open the page, and say the same line as above. |
 
 3. If posted drafts exist and it's been a week since the last summary, say
@@ -181,49 +181,69 @@ every project.
 3. Tell Joel in one line: the batch is up at
    `http://127.0.0.1:8787/?project=<slug>`, plus which angle each draft tests.
 
-The page shows each draft beside a live preview drawn at the feed's real
-width with Joel's avatar and names (Bluesky measured from bsky.app; X and
-LinkedIn follow their layouts but aren't checked live), including the real
-link card fetched from the project's `site`, its character count against the
-channel limit, an "Open in <channel>" button that fills the real composer
-(nothing posts until Joel presses Post), Copy, Edit, Posted (with an optional
-live-post URL) and Skip (with an optional reason) buttons, and a comment
-thread. Who the previews post as lives in `~/.config/marketer/me.json` and
-`avatar.jpg`, plus the project's `headline`. It refreshes every 2 seconds, so
-edits to the JSON show up live.
+The page shows one draft at a time: its text in the middle, the channel
+preview under it, and its threads on the right, with a queue of every draft
+on the left and an "All posts" overview. The preview is drawn at the feed's
+real width with Joel's avatar and names (Bluesky measured from bsky.app; X
+and LinkedIn follow their layouts but aren't checked live), including the
+real link card fetched from the project's `site` and the character count
+against the channel limit. "Open in <channel>" fills the real composer
+(nothing posts until Joel presses Post); Posted takes an optional live-post
+URL and Skip an optional reason. Joel reviews the text the way he reviews
+blog drafts in redline: he selects a phrase to comment on it or flag it with
+one of redline's actions (`~/.config/redline/actions.toml`: slop, polish),
+double-clicks a paragraph to edit it, and comments on the whole post. These
+wait as drafts until he presses Send batch. Who the previews post as lives in
+`~/.config/marketer/me.json` and `avatar.jpg`, plus the project's
+`headline`. It refreshes every 2 seconds, so edits to the JSON show up live.
 
 ### Catch up first (every run)
 
 The live watch lapses (30-minute Monitor, and it dies with the session), so
 before drafting anything, fetch `/api/drafts?project=<slug>` and handle every
-draft with `"needs_claude": true`. That flag is set by each of Joel's
-comments, edits, and skips with a reason, and cleared by your reply in its
-thread. Handle them exactly like the live events below, oldest batch first.
+draft with `"needs_claude": true`. That flag is set by Send batch and by a
+skip with a reason, and cleared once every sent thread has your reply. Handle
+them exactly like the live events below, oldest batch first; a draft's batch
+is the items with `sent_in` equal to its `sends`.
 
 ### Responding to Joel live
 
 Each Monitor line is `EVENT <kind> project=<slug> batch=<b> draft=<id> <text>`:
 
-- **comment**: revise the draft's `text` in the JSON if he asked for a change
-  (run the self-check again) and record any reason (Mode: record feedback).
-- **edit**: Joel rewrote the post himself. `claude_text` holds your original
-  and `text` his version. Compare them, name what he changed (cut a phrase,
-  softened the ask, reordered), and if it's a pattern, add it to `voice.md` or
-  `rejected.md` in his words where possible. Never overwrite his text.
-- **skipped** with a reason: add the draft and his reason to `rejected.md`.
-  A skip with no reason needs nothing.
+- **send** (`n=<n> threads= comments= edits=`): Joel sent a batch on one
+  draft. Fetch the draft from `/api/drafts` and handle every item with
+  `"sent_in": <n>`, each against the current `text` (he may have edited it
+  since). A thread's `anchor.quote` is the text it's on.
+  - A thread labeled `slop`: the `slop` skill's Flag step on that quote, with
+    the draft's `text` as the file. Reply with `<before> -> <after>`; the
+    Record step runs as written.
+  - A thread labeled `polish`: the `polish` skill on that quote, with the
+    rest of the draft as its surroundings. Reply with the rewrite.
+  - Any other thread, and whole-post `comments`: revise the draft's `text`
+    if he asked for a change (run the self-check again) and record any reason
+    (Mode: record feedback). Reply to each.
+  - An `edit` thread: Joel rewrote that span himself (`edit.before` was
+    yours, `edit.after` is his). Name what he changed (cut a phrase, softened
+    the ask, reordered), and if it's a pattern, add it to `voice.md` or
+    `rejected.md` in his words where possible. Never overwrite his text. Say
+    what you took from his edits in one whole-post comment.
+- **skipped** with a reason: add the draft and his reason to `rejected.md`,
+  and say so in a whole-post comment. A skip with no reason needs nothing.
 - **posted**: nothing to reply. The text after the id is the live post URL
   when he gave one (stored as `post_url`; the Monday memo reads it).
 
-For comment, edit, and skip-with-reason, reply in the draft's thread. That
-clears `needs_claude` and shows Joel what you did:
+Every reply shows Joel what you did; a thread reply also resolves the
+thread, and `needs_claude` clears once no sent thread is left unanswered.
+Reply to a thread with `reply ... '<thread id>'`, or comment on the whole
+post with `comment`:
 
 ```bash
-python3 -c 'import json,sys,urllib.request as u; u.urlopen(u.Request("http://127.0.0.1:8787/api/comment", json.dumps({"project":sys.argv[1],"batch":sys.argv[2],"id":sys.argv[3],"who":"claude","text":sys.argv[4]}).encode(), {"Content-Type":"application/json"}))' '<slug>' '<batch>' '<id>' '<one or two plain sentences>'
+python3 -c 'import json,sys,urllib.request as u; a=dict(zip(["project","batch","id","text","thread"],sys.argv[2:])); u.urlopen(u.Request("http://127.0.0.1:8787/api/"+sys.argv[1], json.dumps({"who":"claude",**a}).encode(), {"Content-Type":"application/json"}))' <reply|comment> '<slug>' '<batch>' '<id>' '<one or two plain sentences>' ['<thread id>']
 ```
 
 (sandbox disabled). To change a draft's text yourself, edit the JSON file
-directly; don't use `/api/edit`, which records Joel's edits.
+directly; don't use `/api/edit`, which records Joel's edits. The page finds
+each thread's quote in the new text again on its own.
 
 ## Mode: record feedback
 
