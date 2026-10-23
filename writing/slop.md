@@ -43,6 +43,7 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   rewrite: "No setup removes the risk entirely."
 - **"still matters"**, **"The X matters"**. Say what the thing does and why.
   flagged: "The visual layer still matters"
+  flagged: "Each pull request in a GitHub stack gets a branch of its own, and that matters once a reviewer asks for a change low in the stack."
   lint: still-matters
 - **Vague verdicts** like "weren't good enough". Say what the thing fails
   to deliver.
@@ -81,8 +82,7 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 
 - **Colons as emphasis separators.** A colon may introduce a list ("comes
   down to two things: X, and Y"). Nowhere else, including a colon that sets
-  up a restatement of the noun before it. Joel: "slop basically every time
-  we use a colon like that."
+  up a restatement of the noun before it.
   flagged: "The shape is the same either way: root inside, and a gated network."
   rewrite: "Either way the agent gets root inside the machine and a gated network around it."
   flagged: "What helped most was having the agent build each feature as a stack: a few small reviews in order, each doing one thing."
@@ -106,6 +106,7 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   instead of giving one, and the justification usually isn't needed. Cut it
   and say something the reader can use.
   flagged: "The rule follows from how a stack lands."
+  flagged: "and most of the trouble with GitHub's stacks comes from that choice."
   rewrite: "Those approvals don't all fall on one person, though, since each review in the stack can go to a different reviewer."
   lint: follows-from
 - **"Now X do Y"** as a dramatic turn. Write the claim at normal speed with a
@@ -163,6 +164,8 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   sentence that carries its reason.
   flagged: "The order matters."
   flagged: "Fix the environment and the agent gets fast. Then the code arrives in volume."
+  flagged: "So we built one together."
+  rewrite: "My brother [name] is a student in the Scoring Method community, and he and I built TSM Caddie (tsmcaddie.com) because he wanted a faster way to keep his Scorecard and Practice Card than filling them in by hand."
 - **Juxtaposed pivots** read as drama. Open with "However," or "That said,"
   so the turn is conversational.
   flagged: "Engineering is still here."
@@ -324,6 +327,9 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Aggressive generalizations about people.** Cut or soften to Joel's own
   experience.
   flagged: "Most engineers are weaker at one of them than they realize"
+- **Stating the default** as if it were a selling point ("free on every
+  plan"). Readers assume a feature is free unless told it's paid.
+  flagged: "It's free on every plan, and a stack merges in one step."
 - **Over-specific mechanics that misstate the idea.**
   flagged: "three agents, three boxes"
   rewrite: "an engineer whose agents need more compute gets more boxes."

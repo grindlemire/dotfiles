@@ -27,9 +27,9 @@ message = "Vague totalizer. Name the place or the thing."
 
 [[rule]]
 id = "still-matters"
-pattern = "(?i:\\bstill matters\\b)|\\bThe \\w+ matters\\b"
+pattern = "(?i:\\b(?:still|that|this|it|which) matters\\b)|\\bThe \\w+ matters\\b"
 case = true
-message = "\"still matters\" / \"The X matters\". Say what the thing does and why."
+message = "\"still matters\" / \"that matters\" / \"The X matters\". Say what the thing does and why."
 
 [[rule]]
 id = "relative-date"

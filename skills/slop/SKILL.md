@@ -59,7 +59,8 @@ A plain comment that names a pattern as slop goes through these steps too.
 
 1. Find the entry that already covers the pattern. When one does, add a
    `flagged:` and `rewrite:` pair to it. Otherwise add an entry, in the
-   section it fits, in the shape the file's header describes.
+   section it fits, in the shape the file's header describes. Write the
+   rule in your own plain words; Joel's comment stays in the thread.
 2. When a regex catches the pattern with no innocent match, add a rule to
    `lint.toml` and name it in the entry's `lint:` field. Run the new rule
    over Joel's published posts (alethi.dev `content/posts/`, gitstack.sh
