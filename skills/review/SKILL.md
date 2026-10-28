@@ -125,6 +125,7 @@ Skipped: package-lock.json, components/icons_templ.go (generated).
 - `Why` says what goes wrong and for whom. `Evidence` is what you traced or ran. `Fix` is the smallest change that solves it, concrete enough to apply without rereading the review. One or two sentences each.
 - Group related instances under one ID (e.g. "SQL injection in GetUser, CreateUser, DeleteUser").
 - End with a `Skipped:` line when you skipped files.
+- With no findings, say so and list what you checked instead: each intent claim, the files and the lenses applied to them, and the callers you followed. A clean review shows its coverage.
 - No praise padding.
 
 ## Common mistakes in reviews
