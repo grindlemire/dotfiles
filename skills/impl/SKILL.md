@@ -36,15 +36,15 @@ Each work item runs through four sequential stages, **each in a fresh subagent**
 4. **Gate**: read each stage's report before spawning the next. A bad implementation must not flow into review.
 5. **Tailor stage-2 scrutiny**: generic "review this" wastes the stage. From the implementer's report, write item-specific scrutiny points (the concurrency hazard, the API surface, the test that could be vacuous, the doc that could go stale).
 6. **Recover stalls**: you're notified when a subagent fails or stalls. Resume it once via SendMessage (state where it left off; tell it to skip-and-note anything that hangs). If the resume also dies, spawn a fresh agent seeded with the last good report.
-7. **Park at ready-to-merge**: report per-item outcomes; surface any DEFER-TO-LANDING decision to the human; merge only on their explicit word. Land sequentially — the base branch moves as each item (or unrelated work) lands, so expect rebase conflicts against it; resolve them yourself and re-verify the merged result before completing that land.
+7. **Park at ready-to-merge**: report per-item outcomes; surface any DEFER-TO-HUMAN decision to the human; merge only on their explicit word. Land sequentially — the base branch moves as each item (or unrelated work) lands, so expect rebase conflicts against it; resolve them yourself and re-verify the merged result before completing that land.
 
 ## Prompt construction (what makes stages work)
 
 Every stage prompt contains: absolute workspace path (+ "cd explicitly in every command"), the stage's write restrictions from the table, a required report-back format, and honesty framing ("be honest about failures"; "a no-go report is a success outcome").
 
 - **Implementer**: full item content inline (don't make it fetch), acceptance criteria, required verification commands, commit conventions, and a *feasibility gate* for risky items (check toolchain/design soundness FIRST; declining with reasoning beats forcing it). A declined item's analysis gets recorded by the orchestrator on the issue/tracker before it closes.
-- **Reviewer**: "You did NOT write this code." Post only findings it verified itself; zero findings is legitimate *but must be earned* (state what was checked). Anchor comments to file:line.
-- **Assessor**: verdict vocabulary — AGREE / AGREE-WITH-REDUCED-SCOPE / DISAGREE / DEFER (follow-up issue) / DEFER-TO-LANDING (product call for the human). It posts its verdict reasoning as a reply on each thread AND ends each verdict with the *exact* resolver action (file, precise change, test to add, reply-and-resolve rationale, or follow-up-issue content). Disagreeing is a legitimate outcome.
+- **Reviewer**: "You did NOT write this code." Pass the item's acceptance criteria as the intent and the scrutiny points as checks; the `review` skill checks both. Post only findings it verified itself; zero findings is legitimate *but must be earned* (state what was checked). Anchor comments to file:line.
+- **Assessor**: runs `review-comment` in pipeline mode; its verdicts and Action lines are defined there. It posts its verdict reasoning as a reply on each thread, and each verdict's Action line is the *exact* resolver action. Disagreeing is a legitimate outcome.
 - **Resolver**: executes the verdict list verbatim — no reinterpretation; fixes go at the right point in the branch history; files any DEFER follow-up issues; posts one closing reply per thread stating what was done; confirms zero unresolved threads + clean tree + green verification before reporting.
 
 ## Common mistakes

@@ -65,8 +65,8 @@ Work through the phases in order. Do not skip the reproduction phase even when t
 ### 9. Agent review pipeline
 
 1. Spawn a subagent that invokes the `review` skill on the branch diff vs main. Give it full context: what the fix does, what is deliberately unchanged and why, repo conventions. Ask for severity-tagged findings.
-2. Spawn a second subagent that invokes the `review-comment` skill on those findings. It must read the code itself and return AGREE / PARTIAL / DISAGREE per finding with reasoning. Tell it not to modify the working tree.
-3. Apply only the agreed changes. For agreed behavior changes, write the failing test first (a reviewer-claimed panic or bug gets a red reproduction before the guard goes in). Rejected findings get recorded with the reason, not silently dropped.
+2. Spawn a second subagent that invokes the `review-comment` skill in pipeline mode on those findings. It must read the code itself and return a verdict and Action line per finding (the skill defines the verdicts). Tell it not to modify the working tree.
+3. Apply only the AGREE and AGREE-WITH-CHANGES actions. For agreed behavior changes, write the failing test first (a reviewer-claimed panic or bug gets a red reproduction before the guard goes in). Rejected findings get recorded with the reason, not silently dropped.
 4. After any subagent runs, check `git branch --show-current` and `git status`; review agents sometimes switch branches or leave probe files. Restore before continuing.
 
 ### 10. Pull request
