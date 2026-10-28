@@ -9,6 +9,25 @@ description: Use when the user pastes code review comments (e.g. from Greptile, 
 
 When a code review comment is pasted in, your job is to be the user's senior engineering advisor: think critically about whether the suggestion is actually correct, whether it addresses a real problem, and whether the proposed fix is the right one. Do NOT reflexively implement suggestions.
 
+## Modes
+
+- **Interactive** (default): the user pasted comments. Present your verdicts, then wait for the user to decide (step 6).
+- **Pipeline**: another skill or an orchestrator invoked you as its assess stage (`impl`, `triage`, or a prompt that asks for verdicts per finding). There is no user to wait for. Return the verdict list and stop; the caller decides what happens next. Leave the working tree as you found it, and post thread replies only if the caller's prompt tells you to.
+
+Both modes use the same verdicts and the same Action line, so a caller can execute your output without reinterpreting it.
+
+## Verdicts
+
+This list is the single source for the verdict names; skills that consume your output refer to it.
+
+| Verdict | Meaning | Action line states |
+|---|---|---|
+| **AGREE** | Real problem; the suggested fix is right. | The change: file, exact edit, test to add. |
+| **AGREE-WITH-CHANGES** | Real problem; fix it partially or differently than suggested. | Your fix, same detail as AGREE, and what you dropped from the suggestion. |
+| **DISAGREE** | No real problem, or the fix would make things worse. | The reply to post: one or two sentences citing the code that makes the current behavior correct. |
+| **DEFER** | Real, but out of scope for this change. | Follow-up issue title and body. |
+| **DEFER-TO-HUMAN** | Needs a product or ownership call only the human can make. | The question, with the options and your lean. |
+
 ## Process
 
 ```dot
@@ -21,7 +40,7 @@ digraph triage {
     assess [label="3. Assess the real problem (if any)"];
     evaluate [label="4. Evaluate the suggestion"];
     recommend [label="5. Present recommendation"];
-    wait [label="6. Wait for user decision"];
+    wait [label="6. Hand off"];
 
     understand -> read -> assess -> evaluate -> recommend -> wait;
 }
@@ -33,6 +52,8 @@ Parse what the reviewer is actually saying. Identify:
 - What file/function/line they're referring to
 - What they think the problem is
 - What they're suggesting as a fix (if anything)
+
+Findings from the `review` skill arrive as `F1`, `F2`, … with Why / Evidence / Fix lines. Keep those IDs in your output. Treat the Evidence line as the first thing to check, not as proof.
 
 ### Step 2: Read the actual code
 
@@ -46,6 +67,8 @@ Ask yourself:
 - **What is the broader context?** How does this code fit into the larger system? What are the design constraints? What tradeoffs were made and why?
 - **What would break if we changed this?** Consider downstream effects, test implications, API contracts.
 
+**Settle it with evidence, whichever way it goes.** To agree that a bug exists, trace the path that triggers it; when it's cheap, reproduce it with a failing test or a one-off command. To disagree, cite the line that makes the current code correct (the guard, the caller that never passes nil, the test that already covers it). Delete any probe you wrote and confirm the working tree matches how you found it. If neither direction can be settled by reading or a quick probe, say what would settle it; that usually means DEFER-TO-HUMAN.
+
 ### Step 4: Evaluate the suggestion
 
 If the reviewer proposed a specific fix, evaluate it critically:
@@ -56,27 +79,28 @@ If the reviewer proposed a specific fix, evaluate it critically:
 
 ### Step 5: Present recommendation
 
-Present your analysis to the user in this format:
+Present each comment in this format:
 
 ```
-## Comment: [brief summary of what the reviewer said]
+## [F2 or short label]: [brief summary of what the reviewer said]
 
 ### The actual situation
-[Your assessment of the code and whether there's a real problem. Be specific, reference actual code.]
+[Your assessment of the code and whether there's a real problem. Cite the evidence: the lines you traced or the probe you ran.]
 
 ### Assessment of the suggestion
 [Whether the suggestion is correct, partially correct, or misguided. Explain why.]
 
-### Recommendation: [AGREE / PARTIALLY AGREE / DISAGREE / ALTERNATIVE]
+### Verdict: [AGREE / AGREE-WITH-CHANGES / DISAGREE / DEFER / DEFER-TO-HUMAN]
 
-[1-3 sentences on what you recommend doing and why.]
+[1-3 sentences on why.]
 
-[If AGREE or PARTIALLY AGREE or ALTERNATIVE: brief description of the specific changes you'd make]
+Action: [what the Verdicts table says this verdict's Action line states]
 ```
 
-### Step 6: Wait for the user
+### Step 6: Hand off
 
-Do NOT implement any changes until the user explicitly agrees. If you have multiple comments to triage, present all recommendations first, then wait for the user to decide which ones to act on.
+- **Interactive:** do NOT implement any changes until the user explicitly agrees. If you have multiple comments to triage, present all recommendations first, then wait for the user to decide which ones to act on.
+- **Pipeline:** return the verdict list and stop. Implementing is the caller's job.
 
 ## Critical Mindset Rules
 
@@ -88,7 +112,7 @@ Do NOT implement any changes until the user explicitly agrees. If you have multi
 
 **Context matters more than rules.** A suggestion might follow a best practice in general but be wrong for this specific codebase, architecture, or situation. Always evaluate in context.
 
-**Scope creep is a red flag.** If addressing a comment would require touching many files or changing an API, that's a signal to push back or propose it as a separate piece of work, not to do it inline.
+**Scope creep is a red flag.** If addressing a comment would require touching many files or changing an API, that's a signal to push back or propose it as a separate piece of work (DEFER), not to do it inline.
 
 **Preserve the author's intent.** The code was written a certain way for a reason. Before changing it, make sure you understand that reason. If you can't figure out why, say so; don't just change it.
 
@@ -102,4 +126,5 @@ Process each comment independently through the full pipeline. Group your recomme
 - **Implementing before recommending.** Never write code before presenting your assessment.
 - **Ignoring the suggestion's downsides.** Every change has costs. Name them.
 - **Being contrarian for its own sake.** Disagree when you have a real reason, not to prove independence.
+- **A verdict without evidence.** "Looks fine" is not a DISAGREE; name the line that makes it fine.
 - **Lengthy explanations.** Be direct. The user needs a decision, not an essay.
