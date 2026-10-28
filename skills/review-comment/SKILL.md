@@ -118,7 +118,18 @@ Action: [what the Verdicts table says this verdict's Action line states]
 
 ## When multiple comments are pasted
 
-Process each comment independently through the full pipeline. Group your recommendations at the end so the user can make decisions on all of them at once. Look for interactions between comments: sometimes two suggestions conflict with each other, or one makes another unnecessary.
+Process each comment independently through the full pipeline. Look for interactions between comments: sometimes two suggestions conflict with each other, or one makes another unnecessary.
+
+With more than three comments, open with a summary table so the user can decide on all of them at once:
+
+```
+| ID | Verdict | Reason | Action |
+|---|---|---|---|
+| F1 | AGREE | id reaches the SQL string unescaped | handlers.go:42: pass id as $1 |
+| F4 | DISAGREE | nil is impossible; caller at api.go:30 checks it | Reply: "api.go:30 rejects nil before this runs." |
+```
+
+Then give the full step 5 entry only for AGREE-WITH-CHANGES, DEFER-TO-HUMAN, and any verdict that was a close call. For the rest, the table row is the whole entry. In pipeline mode, the table still goes first, but every comment gets its full entry, since the caller executes the Action lines.
 
 ## Anti-patterns to avoid
 
