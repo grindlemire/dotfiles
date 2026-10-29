@@ -24,6 +24,7 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   "genuinely".
   flagged: "guards against a real risk"
   rewrite: "guards against a risk"
+  flagged: "the real card"
   lint: intensifier
 - **"whole"**. Cut it, and rewrite the sentence around the specific thing.
   flagged: "shows the whole problem in one place"
@@ -77,6 +78,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Relative dates** ("this week", "recently"). Posts are read long after
   they're written, so give the month and year.
   lint: relative-date
+- **"X for me"** as a hedge ("isn't a replacement for me"). State the
+  claim and its reason, and let the first person elsewhere in the post
+  carry whose view it is.
+  flagged: "Dia isn't a replacement for me, with AI integrations I can't turn off."
+  rewrite: "Dia isn't a suitable replacement, with AI integrations you can't turn off."
+  lint: for-me
 
 ## Constructions
 
@@ -91,6 +98,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   Pseudo-cleft reveals. Fold into the sentence before or state X directly.
   rewrite: "They just haven't put those pieces together this way yet."
   lint: pseudo-cleft
+- **"Doing X means doing Y" for what a product makes you do.** It turns a
+  step into an equation. Say who does what ("you search your tabs by typing
+  %"). Defining a term this way is fine ("Stacking means splitting a change
+  into…"), so there's no lint rule.
+  flagged: "searching your tabs means typing % in the address bar"
+  rewrite: "you search your tabs by typing % in the address bar"
 - **"Both did X."** Say who built what and what it shows.
   flagged: "Both drew the line at the network."
   rewrite: "Model providers have already built similar controls into their own agents, which says something about the approach."
@@ -150,6 +163,9 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Backwards framing** describes what should happen as if it already does.
   flagged: "those fundamentals are where an engineer's time goes"
   rewrite: "an engineer should spend more time on those fundamentals and less on the mechanics of the code itself."
+- **"X only happens when Y"** as a conditional verdict that sets up the
+  product as the answer. State the aim and what was done about it.
+  flagged: "We want golfers to keep using the method, and that only happens when tracking takes almost no effort."
 - **Awkward appositives.**
   flagged: "Unit and integration tests are a start, and one we've relied on"
   rewrite: "are a good start, and engineers have relied on them for a long time."
@@ -166,6 +182,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "Fix the environment and the agent gets fast. Then the code arrives in volume."
   flagged: "So we built one together."
   rewrite: "My brother [name] is a student in the Scoring Method community, and he and I built TSM Caddie (tsmcaddie.com) because he wanted a faster way to keep his Scorecard and Practice Card than filling them in by hand."
+- **One-line product closers** like "X is built around that." or "Y is
+  built for that." A short declarative that lands the product as the
+  answer reads as an ad. End on the idea, and when the product comes up,
+  say in a full sentence what it was built on and why.
+  flagged: "GitStack is built around that."
+  lint: built-around-that
 - **Juxtaposed pivots** read as drama. Open with "However," or "That said,"
   so the turn is conversational.
   flagged: "Engineering is still here."
@@ -230,6 +252,10 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   option").
 - **Parts before the whole.** Define the system before listing its parts,
   and give each part a bold run-in lead so it stands out.
+- **One-word bold label openers** ("**Purpose.**") that tag a paragraph
+  like a form field. Run-in leads belong to a list of parts; elsewhere, open
+  with the sentence itself.
+  flagged: "**Purpose.** TSM Caddie is a companion for The Scoring Method, on the course and in practice."
 - **Forward references.** A sentence or bold line that leans on a concept
   the post hasn't introduced yet. End on the need and introduce the concept
   where it belongs.

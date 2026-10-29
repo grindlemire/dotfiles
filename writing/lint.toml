@@ -32,9 +32,19 @@ case = true
 message = "\"still matters\" / \"that matters\" / \"The X matters\". Say what the thing does and why."
 
 [[rule]]
+id = "built-around-that"
+pattern = "\\b(?:is|was|are) built (?:around|for) (?:that|this|it)\\."
+message = "One-line product closer (\"X is built around that.\"). End on the idea, or say what it was built on and why."
+
+[[rule]]
 id = "relative-date"
 pattern = "\\b(this|last|next) (week|month|year)\\b|\\b(recently|yesterday)\\b"
 message = "Relative date. Give the month and year."
+
+[[rule]]
+id = "for-me"
+pattern = "\\bfor me\\b"
+message = "\"X for me\" hedge. State the claim and its reason."
 
 [[rule]]
 id = "pseudo-cleft"
