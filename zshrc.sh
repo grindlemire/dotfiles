@@ -22,9 +22,8 @@ Red="\033[0;31m"
 Green='\033[0;32m'
 Color_Off='\033[0m'
 
-godir() {
-    c "$@"
-}
+# godir: jump to the root of all code
+alias godir='cd ~/code'
 
 # c [query]: jump to a repo under ~/code/<bucket>/<repo>. An exact repo name
 # (c gitstack) or bucket/repo (c alethi/gitstack) goes straight there;
