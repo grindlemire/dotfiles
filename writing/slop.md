@@ -166,6 +166,11 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **"X only happens when Y"** as a conditional verdict that sets up the
   product as the answer. State the aim and what was done about it.
   flagged: "We want golfers to keep using the method, and that only happens when tracking takes almost no effort."
+- **A "since" or "because" clause that explains nothing in its sentence.**
+  The reason has to answer why the main clause is true. When it supports a
+  different point, give that point its own sentence.
+  flagged: "built for teams whose coding agents write most of their code, since a multi-thousand-line pull request is too big for anyone to review carefully"
+  rewrite: "GitStack (gitstack.sh) is a Git host and code review tool for teams whose coding agents write most of their code."
 - **Awkward appositives.**
   flagged: "Unit and integration tests are a start, and one we've relied on"
   rewrite: "are a good start, and engineers have relied on them for a long time."
@@ -222,6 +227,20 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Wordy titles.** Cut every word the title still works without.
   flagged: "Engineering after hand-written code"
   rewrite: "After hand-written code"
+- **"What I ran into" titles** and their kin ("What I learned"). They
+  announce that the post holds findings instead of giving one. Put the
+  finding itself in the title.
+  flagged: "What I ran into building an Arc-style tab switcher as a Chrome extension"
+  rewrite: "I made an Arc-style tab switcher for Chrome, and since chrome.commands doesn't tell you when Cmd is released, the overlay listens for it inside the page"
+  lint: teaser-title
+- **Clean-cut one-line hooks**, in a title or an opening line: a tidy "I
+  made X for Y", or a flat news fact ("X shuts down on <date>, and…") put
+  first for effect. They read as copy. Start the way a person would say it,
+  from their own situation.
+  flagged: "I made an Arc-style recent-tab switcher for Firefox and Zen"
+  rewrite: "Coming from Arc, I made a Cmd+J recent-tab switcher that works in Firefox and Zen"
+  flagged: "Arc shuts down on December 22, and its tab switcher was the main thing keeping me on it."
+  rewrite: "I was one of the last few people holding onto Arc even after The Browser Company stopped developing it, because I couldn't give up Cmd+J to jump between my recent tabs."
 - **Status text that narrates what a control already says.** In UI copy, a
   line beside a button that restates its state. Let the button carry the
   state, and keep labels short and literal.

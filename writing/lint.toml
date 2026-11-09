@@ -85,3 +85,8 @@ message = "Referring to the post from inside it. State the consequence."
 id = "how-to-read"
 pattern = "\\bhow to read this\\b"
 message = "\"How to read this post\" box. Remove it."
+
+[[rule]]
+id = "teaser-title"
+pattern = "^#*\\s*What I (ran into|learned)\\b"
+message = "Teaser title. Put the finding itself in the title."
