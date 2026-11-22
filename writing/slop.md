@@ -29,15 +29,26 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **"whole"**. Cut it, and rewrite the sentence around the specific thing.
   flagged: "shows the whole problem in one place"
   flagged: "ban the whole tool"
+  flagged: "Restoring one tenant's database means restoring the whole server and copying that database out"
+  rewrite: "To restore one tenant's database, you restore the server, with every tenant on it, to a new server and copy that one database out"
 - **"in one place"**, **"everything after it"**. Vague totalizers that point
   at nothing. Name the place or the thing.
   lint: totalizer
 - **"open"** for unresolved questions. Name the concrete limitation instead
   (see "Sections that argue against the idea").
   flagged: "What's still open"
+  flagged: "The repos don't say, so it's an open question for the team"
+  rewrite: "The repos don't say, so I'll ask the team"
 - **"holds" / "can hold"** for an argument or decision. Say what the reader
   should expect.
   flagged: "why I think that can hold"
+- **"settle"** in any form, for what evidence or a check would decide. Say what it would show.
+  flagged: "This settles what breaks first."
+  flagged: "These settle what breaks first."
+  rewrite: "Metrics for connections, CPU and storage on the shared database server, and for node pool use, would show which limit growth hits first."
+  flagged: "The contract may settle all of this."
+  rewrite: "The code doesn't show who owns the app itself, and the contract may say something different, which makes it the first thing to read."
+  lint: settle
 - **"never" / "always"** as rhetoric. Keep them only when literally true of
   a fact ("the reviewers never saw that reasoning").
   flagged: "Zero risk was never on offer"
@@ -46,10 +57,20 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "The visual layer still matters"
   flagged: "Each pull request in a GitHub stack gets a branch of its own, and that matters once a reviewer asks for a change low in the stack."
   lint: still-matters
-- **Vague verdicts** like "weren't good enough". Say what the thing fails
-  to deliver.
+- **Vague verdicts** like "weren't good enough", and their positive twins:
+  "sound", "works" or "is working", "in good shape", "good patterns". Say
+  what the thing does or fails to deliver; a heading over good things says
+  what to do with them ("What to keep").
   flagged: "I realized multi-thousand-line PRs weren't good enough."
   rewrite: "I realized multi-thousand-line PRs weren't leading to sustainable, reliable software."
+  flagged: "The application is built on sound patterns"
+  flagged: "the application code follows good patterns in several places, listed under What is working"
+  rewrite: "Each customer's data sits in its own databases and storage account, and every tenant is built by the same Terraform module."
+  flagged: "Each customer's data is separated and much of the code is sound"
+  flagged: "Several parts are in good shape"
+  rewrite: "Keep these as the platform changes"
+  flagged: "Delivery was slow until last spring and mostly steady since."
+  rewrite: "For six months the vendor delivered about a quarter of its later monthly output, and delivery has been mostly steady since."
 - **Overclaiming superlatives.**
   flagged: "the most trusted machine an organization owns"
   rewrite: "one of the most trusted machines"
@@ -65,6 +86,10 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Physical idioms for how software parts relate** ("hang off", "sit on
   top of"). Say what the relationship is.
   flagged: "and its diff, threads, approvals, and merge button all hang off that pair of branches"
+  flagged: "The concerns are in the shared layers under every customer"
+  rewrite: "Most of the problems are in what every customer shares, such as the database server, the ingress controller and the message broker"
+  flagged: "A few shared pieces carry every customer."
+  rewrite: "Every customer depends on a few shared components."
 - **"part" / "parts"** to refer to the argument's own structure.
   flagged: "I'm building GitStack for this part"
   rewrite: "to address this"
@@ -84,6 +109,13 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "Dia isn't a replacement for me, with AI integrations I can't turn off."
   rewrite: "Dia isn't a suitable replacement, with AI integrations you can't turn off."
   lint: for-me
+- **"choke points"** for shared limits in a system. Say "bottlenecks for
+  growth or reliability".
+  flagged: "Choke points: shared pieces that limit growth, or that one failure would take down for every site, and what 2x and 5x growth would test."
+- **Announcing how a list is processed** ("ranked", "prioritized",
+  "categorized") when the reader doesn't need the method. Name the thing
+  and what it gives them.
+  flagged: "A ranked risk list and a suggested order of work."
 
 ## Constructions
 
@@ -94,6 +126,20 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   rewrite: "Either way the agent gets root inside the machine and a gated network around it."
   flagged: "What helped most was having the agent build each feature as a stack: a few small reviews in order, each doing one thing."
   rewrite: "I have the agent build each feature as a stack of small reviews that go in order and each do one thing."
+  flagged: "Vendor: what was delivered over time and how much the platform depends on them."
+  flagged: "and in how the platform is run: by hand, from laptops, by very few people."
+  rewrite: "and in how the platform is run, which is by hand, from laptops, by a few people."
+  flagged: "once per worker pod: over a hundred runs of each midnight job today"
+  A bold run-in lead ends with a period, not a colon, and the sentence after it stands on its own.
+  flagged: "The product is one Django and React app, deployed once per customer: 60 copies in production."
+  rewrite: "The product is one Django and React app, and production runs 60 copies of it, one per customer."
+  flagged: "**Customer data exposure: one leaked credential can reach every customer.**"
+  rewrite: "**Customer data exposure.** One leaked credential can reach every customer."
+  flagged: "**Load and cost:** connections, CPU and storage on the shared database server, and node pool use."
+  rewrite: "**Load and cost.** Metrics for connections, CPU and storage on the shared database server, and for node pool use, would show which limit growth hits first."
+  rewrite: "once per worker pod, which is over a hundred runs of each midnight job today"
+  flagged: "exist only because of a bug: the entrypoint treats"
+  rewrite: "exist only because of a bug, since the entrypoint treats"
 - **"What changes is X" / "What's left is X" / "What they're missing is X".**
   Pseudo-cleft reveals. Fold into the sentence before or state X directly.
   rewrite: "They just haven't put those pieces together this way yet."
@@ -115,6 +161,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "The box and its delegated identity make that context reachable"
   flagged: "the systems around it decide how much of it reaches the work."
   rewrite: "An agent gives an engineer a lot of leverage, and most organizations waste much of it."
+  flagged: "One failure or one heavy tenant reaches every customer, and growth reaches the database server and the node pools first."
+  rewrite: "If the database server fails, the 50 tenants whose apps use it go down, and if the ingress controller fails, 55 of the 60 do."
+  flagged: "Whether they still work needs a check in the live environment"
+  rewrite: "Someone with live access needs to check whether they still work"
+  flagged: "Isolation inside the BI tool rests on row-level security that only some release paths re-apply, a write-capable DB credential, and one shared secret key"
+  rewrite: "Inside the BI tool, separation between accounts depends on row-level security that only some release paths re-apply."
 - **"X follows from Y"** for an idea or rule. It announces a justification
   instead of giving one, and the justification usually isn't needed. Cut it
   and say something the reader can use.
@@ -140,15 +192,35 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "Here's the thing"
   flagged: "There's a simple test for this."
   lint: throat-clearing
+  flagged: "The hotfix box and the bypass note go together."
+  flagged: "Steps 7 and 8 together show two problems."
 - **Honesty announcements.** State the limitation; the reader sees the
   honesty.
   flagged: "I don't want to oversell this"
 - **Fragment answers.** Answer a question with a full sentence.
   flagged: "Why is the laptop such a bad place? Because of what the engineer can do from it."
   rewrite: "An engineer's laptop is one of the most trusted machines an organization owns, since a person with judgment sits in front of it."
+  The same goes for opening an answer with a bare verdict ("No.", "Yes.", "It can."): fold it into the sentence that follows.
+  flagged: "Actual load, cost, whether the running environment matches the code, and whether backups restore."
+  rewrite: "The code can't show actual load or cost, whether the running environment matches it, or whether backups restore, and each needs someone with access to check."
+  flagged: "Only partly. 40 of its 52 tenants are in Terraform mode"
+  rewrite: "Only partly, since 40 of its 52 tenants are in Terraform mode"
+  flagged: "Not today. Per-site configuration is split across five places"
+  rewrite: "Not easily, because per-site configuration is split across five places"
+- **Verbless fragments** standing as sentences ("Cheapest first.", "Four steps, then the ask."). Every sentence needs a subject and a verb, unless the structure requires a label, such as a title, heading, table cell or bold lead.
+  flagged: "Four steps, cheapest first. None needs a decision about the target architecture."
+  rewrite: "The four steps below start with the cheapest, and none of them waits on a decision about the target architecture."
+  flagged: "Cheapest first. None depends on a decision about the target architecture."
+  Telegraphic report openers are the same pattern: a noun phrase with no subject, then a colon and more fragments. Give the sentence a subject and a verb, and say who did what.
+  flagged: "Code-only review of the platform as of 2026-11-18: every repo pinned to a commit, no access to Azure or any running system."
+  rewrite: "I read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
 - **Symmetrical, lyrical sentences** that repeat a noun for rhythm.
   flagged: "the tool is the only place to draw the line, so the line lands on the tool, and the harmless uses get banned along with the dangerous ones"
   rewrite: "The laptop gives a security team no other place to enforce a rule, so they ban the tool outright, harmless uses included."
+  flagged: "The vendor built most of the platform, and the platform depends on it."
+  rewrite: "The vendor built most of the platform, and the client still depends on it for the base code and UI packages."
+  flagged: "a key shared by every tenant reaches every tenant if it leaks"
+  rewrite: "a leaked shared key works in every tenant"
 - **Naming sentences.** Introduce the term in use.
   flagged: "I'll call that machine the box."
   rewrite: "Give the agent its own box."
@@ -157,6 +229,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   could mean two nouns, name the one you mean.
   flagged: "The reverse also holds"
   flagged: "and organizations handle it differently"
+  flagged: "Each new site adds to that load, and several limits are reached at 5x growth."
+  rewrite: "Each new site adds manual work, and by 5x growth the worker and batch node pools run out of room on declared requests."
+  flagged: "Customer data leaving through bearer links and outside vendors, each of which needs a data agreement"
+  rewrite: "The red edges carry customer data and the dashed ones may, and each vendor that receives it needs a data agreement"
+  flagged: "The integration vendor, top left, is a third-party platform that scripts hand BI tokens to, and the agent prompts name a demo host"
+  rewrite: "The integration vendor, top left, is a third-party platform. Scripts in the client's repos hand it BI tokens, and prompt files in those repos name a demo host"
 - **Odd metaphors.**
   flagged: "code was how that thinking reached the machine"
   rewrite: "Engineering has always been about thinking clearly and communicating intent, and for most of its history that intent was written in code."
@@ -174,6 +252,22 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Awkward appositives.**
   flagged: "Unit and integration tests are a start, and one we've relied on"
   rewrite: "are a good start, and engineers have relied on them for a long time."
+- **Comparatives with no comparison** ("weaker controls", "less protected").
+  Say what the thing is or where it goes.
+  flagged: "Customer data and credentials sit in places with weaker controls."
+  rewrite: "Credentials are in git, and customer data is copied into logs, error tracking and laptop dumps."
+- **Vague verbs that have to be decoded** ("has lasted"). Say what is
+  measurably true.
+  flagged: "and more of the 2025 work has lasted"
+  rewrite: "and more of the code written in 2025 is still in the codebase"
+- **Compressed adjectives** that land on the wrong noun ("the cheapest
+  copies" when the fix is cheap, not the copies). Spell out the relation.
+  flagged: "Stop the cheapest copies"
+  rewrite: "Stop the copies that are easiest to stop"
+- **An assertion right after a disclaimer.** If the sentence before says it
+  can't be known, don't state it as fact; hedge it in the same sentence.
+  flagged: "Code can't measure it. Most of the time goes into the manual steps"
+  rewrite: "Commit dates don't show when an apply ran, so code can't measure it, though the manual steps are the likely bulk of the time"
 
 ## Rhythm
 
@@ -187,6 +281,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "Fix the environment and the agent gets fast. Then the code arrives in volume."
   flagged: "So we built one together."
   rewrite: "My brother [name] is a student in the Scoring Method community, and he and I built TSM Caddie (tsmcaddie.com) because he wanted a faster way to keep his Scorecard and Practice Card than filling them in by hand."
+  flagged: "It rests on a few people."
+  rewrite: "A release is dozens of hand-run steps, and one author made almost every release commit."
+  flagged: "It is the cheapest fix on the list."
+  rewrite: "Run each tenant's scheduled jobs once instead of once per pod, which is a small change to how Celery beat runs."
+  flagged: "Git measures delivered code. Specs, designs, support and work in the vendor's own repos don't show in it."
+  rewrite: "Git counts only delivered code, so specs, designs, support and work in the vendor's own repos don't show in these numbers."
 - **One-line product closers** like "X is built around that." or "Y is
   built for that." A short declarative that lands the product as the
   answer reads as an ad. End on the idea, and when the product comes up,
@@ -201,14 +301,50 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "a decision they made ten years ago"
   rewrite: "the same kind of decision."
 - **Rule-of-three padding.** Three items only when there are three things.
+  flagged: "that logic cannot be reviewed, tested or rebuilt from code"
+  rewrite: "that mapping exists only inside the engine, so it can't be rebuilt from code"
 - **Repeated phrases.** No phrase more than twice in a post; past that it
   reads as a tic.
+  flagged: "Code can't answer that."
+  rewrite: "Time per tenant and failure rate live in Argo history, which is kept for 30 days"
 - **Em dashes**, anywhere a person reads. Use a period, comma, or
   parentheses.
   lint: em-dash
 
 ## Structure
 
+- **Restating what the reader already knows.** In a message, an opening
+  that spells out what the writer is obviously doing (what they're
+  reviewing, which document they're following) when the context implies it.
+  Start with why you're writing.
+  flagged: "What I'm reviewing: the client's code and infrastructure definitions (all repos, Terraform, CI and deployment config), following the SOW."
+  The same goes for an intro that explains where content came from, its
+  caveats, or how to use the page, when the reader can tell.
+  flagged: "Drawn from the application and infrastructure repos. They show what the code declares, which may not match what runs. Click any diagram to zoom in."
+  flagged: "These are the declared sources, and what a pod has actually loaded can lag behind them"
+  flagged: "so the diagram shows the declared path and this review could not check the running state"
+  rewrite: "Which build each tenant runs is visible only in the cluster, not in git."
+  A scope note written as a label and passive report ("Scope. This review covers…") reads as a form. When the caveat is needed, say it directly, and tell the reader what to do about it.
+  flagged: "Scope. This review covers the code only: every repo as of 18 November 2026. It had no access to Azure or to anything running, so each point describes what the code declares. The running system may differ."
+  rewrite: "These findings come from reading every repo as of 18 November 2026, without access to Azure or the running system. Where production differs from the code, production is right, so flag any difference you know of."
+  A caveat that earns its place in a brief is filler on a cover, landing page or page subtitle, where it has no job. Cut it there, along with subtitles that restate the page title.
+  flagged: "A code-only review of every repo as of 18 November 2026. Where production differs from the code, production is right, so flag any difference you know of."
+- **"What I'll present"** framing when the message is a preview asking for
+  steer. Say what you're looking into so the reader can redirect it.
+  flagged: "What I'll present:"
+- **Formal organizing phrases** that name a document's structure instead of
+  the subject ("By SOW area", "Per section 3"). Name the areas themselves in
+  plain words.
+  flagged: "By SOW area (architecture, Azure and scaling, releases, site configuration, security and compliance): where common industry practice isn't being followed, and where things are in good shape."
+- **Decorative label lines** above a title: a small product name and date
+  (an "eyebrow"), or a date stamp and footer the reader doesn't need. Start
+  with the title.
+  flagged: "Atlas · 20 November 2026"
+  A label that categorizes the title under it ("Architecture review · Findings") is the same pattern, since it reads as a byline.
+  flagged: "Architecture review · Preliminary findings"
+- **Questions to the reader as bullet points.** Ask them in a sentence or
+  two of prose.
+  flagged: "- Is there anything you expected that isn't on this list?"
 - **Opening on "you" in a scene** without setting it up puts the reader in a
   role they may not hold. Open with "Suppose you are…" so the role is an
   invitation, tell the scene in "you", and keep the closing scene in the
@@ -275,6 +411,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   like a form field. Run-in leads belong to a list of parts; elsewhere, open
   with the sentence itself.
   flagged: "**Purpose.** TSM Caddie is a companion for The Scoring Method, on the course and in practice."
+  flagged: "**What it means.**"
+- **Bold for emphasis.** In a long document for a busy reader, bold marks the
+  sentences that carry the gist, so reading only the bold gives the point of
+  each section. Bold whole sentences, about one per paragraph or item, and
+  never a word or phrase for emphasis. Run-in IDs and labels that tell a
+  skimmer nothing ("**12. F-1.2-04**") stay plain.
 - **Forward references.** A sentence or bold line that leans on a concept
   the post hasn't introduced yet. End on the need and introduce the concept
   where it belongs.
@@ -295,6 +437,8 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "For a solo developer it might be a Mac mini in a closet"
 - **Generic summary sentences.** Replace with the specific mechanism.
   flagged: "The box puts them in one place where you can watch them."
+  flagged: "The vendor is high-value and a dependency. The contract terms on ownership, history access and exit are part of the platform's risk."
+  rewrite: "The client relies on the vendor for most of its code and the base platform, so if the relationship ends, the client keeps only what the contract gives it on code ownership, history and exit."
 - **Section wrap-ups that add a new mechanism.** A closing paragraph
   summarizes what the section's pieces achieve together.
   flagged: "Review also covers the write path out of the box…"
@@ -304,6 +448,23 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   concrete claim, ideally one that closes a loop the opening started.
 - **A call to action Joel didn't ask for.** Propose one; drop it if he isn't
   sold.
+- **Every list item built as an "X, Y, and Z" triple.** Read aloud, a list
+  where each item has three clauses sounds templated. Keep the one or two
+  facts that matter and leave the rest to the detail.
+  flagged: "The database server, networking and backups are outside Terraform, changes are applied from laptops, and nothing in code recovers the platform in another region."
+  rewrite: "The database server and networking are outside Terraform, and nothing in code recovers the platform in another region."
+- **Templated verdict blocks.** A repeated "what it means" paragraph after
+  each section that restates the bullets in the same shape. Give a concrete
+  consequence for a person, or cut it.
+  flagged: "Nobody can show from code what the database and network look like, a bad apply reaches every tenant at once, and recovery depends on steps that have not been tested."
+  rewrite: "A bad apply from one laptop can change every tenant at once, and if the database server is lost, nobody has tested the way back."
+- **Answers that don't answer.** When a question has a yes or no answer,
+  give it first in the sentence, then the facts.
+  flagged: "Can we fail over to another region? The code declares one region per workspace,"
+  rewrite: "Not from anything in code, which declares one region per workspace,"
+- **A bullet that tacks on an unrelated point.** Give the second point its
+  own bullet.
+  flagged: "Offboarding has no procedure for a customer's data"
 
 ## Claims and attribution
 
@@ -317,6 +478,15 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Equating the agent with the engineer.** An engineer stops to think
   before something expensive; an agent may not.
   flagged: "an agent that can't do more damage than the engineer it works for."
+- **A document as the one who did the work** ("this review read", "the review
+  couldn't see", "the report found"). A review or report doesn't read,
+  see or check anything; a person did. Say who did it, usually "I", or state
+  the fact about the code ("Running state isn't in the code").
+  flagged: "This review read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
+  rewrite: "I read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
+  flagged: "The review couldn't see running state, such as resources made by hand"
+  rewrite: "Running state isn't in the code, such as resources made by hand"
+  lint: document-actor
   rewrite: "The goal is to give the agent free rein inside the box without letting anything harmful leave it."
 - **False justifications.** Give the actual reason.
   flagged: "it gets root because there's nothing inside worth protecting"

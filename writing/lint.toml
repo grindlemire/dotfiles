@@ -90,3 +90,13 @@ message = "\"How to read this post\" box. Remove it."
 id = "teaser-title"
 pattern = "^#*\\s*What I (ran into|learned)\\b"
 message = "Teaser title. Put the finding itself in the title."
+
+[[rule]]
+id = "settle"
+pattern = "\\bsettl(e|es|ed|ing)\\b"
+message = "\"Settle\" for what a check would decide. Say what it would show."
+
+[[rule]]
+id = "document-actor"
+pattern = "\\b(this|the) (review|report|analysis|document) (read|reads|saw|sees|could not see|couldn't see|could not read|couldn't read|did not check|didn't check|never touched|did not reach|didn't reach)\\b"
+message = "A document as the actor. A person read or checked it; say who, or state the fact."
