@@ -34,6 +34,10 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **"in one place"**, **"everything after it"**. Vague totalizers that point
   at nothing. Name the place or the thing.
   lint: totalizer
+- **A vague share of a whole** ("much of the infrastructure", "most of
+  the code"). Name the parts, which is also how the reader checks it.
+  flagged: "much of the infrastructure is outside code and changed by hand"
+  rewrite: "The database servers, network and Key Vaults are also outside Terraform, so their settings are in no repo."
 - **"open"** for unresolved questions. Name the concrete limitation instead
   (see "Sections that argue against the idea").
   flagged: "What's still open"
@@ -111,7 +115,6 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   mid-November"), and leave commit lists to the file or table that holds
   them.
   flagged: "I read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
-  rewrite: "I worked from the code alone, going through every repo as it stood on November 18. I couldn't see Azure or anything running, so where production differs from what I describe, production is right."
   flagged: "There were 120 prod tags from 2025-12-01 to 2026-11-18."
   rewrite: "Production got 120 tags between December 2025 and mid-November 2026."
   lint: formal-date
@@ -225,7 +228,6 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "Cheapest first. None depends on a decision about the target architecture."
   Telegraphic report openers are the same pattern: a noun phrase with no subject, then a colon and more fragments. Give the sentence a subject and a verb, and say who did what.
   flagged: "Code-only review of the platform as of 2026-11-18: every repo pinned to a commit, no access to Azure or any running system."
-  rewrite: "I worked from the code alone, going through every repo as it stood on November 18. I couldn't see Azure or anything running, so where production differs from what I describe, production is right."
 - **Symmetrical, lyrical sentences** that repeat a noun for rhythm.
   flagged: "the tool is the only place to draw the line, so the line lands on the tool, and the harmless uses get banned along with the dangerous ones"
   rewrite: "The laptop gives a security team no other place to enforce a rule, so they ban the tool outright, harmless uses included."
@@ -325,6 +327,39 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 
 ## Structure
 
+- **Signposts and caveats before the point.** A label ("Bottom line:"), a
+  pointer to another page ("(Practices page)", "The Roadmap orders these"),
+  or a line about how the content is organized, ahead of what the reader
+  came for. Lead with the point; the detail and pointers come after it. A
+  summary leads with the state of things, the good with the bad, rather
+  than a list of faults. Name a section in a link or in plain words, not as
+  a capitalized title mid-sentence.
+  flagged: "Bottom line: each customer's data sits in its own databases and storage account, and the What to keep section lists the design choices worth building on."
+  rewrite: "Each customer's data is kept apart in its own databases and storage account, and one Terraform module builds every customer the same way. Most of the risk is in what every customer shares and in how the platform is released and run."
+  flagged: "Each finding names the practice it falls short of (Practices page). The main gaps are:"
+  rewrite: "These are the biggest gaps against common practice."
+  flagged: "The Roadmap orders these. The first are read-only checks in the live environment, then small changes:"
+  rewrite: "Start with read-only checks in the live environment, then make small changes."
+- **A category label leading each list item** ("For infrastructure as code
+  and safe change (framework, pillar), X, Y and Z are…"). The reader gets a
+  taxonomy before anything happens. Lead with what is wrong and what it
+  causes, then name the practice or framework at the end.
+  flagged: "For infrastructure as code and safe change (Azure Well-Architected, Operational Excellence), the shared Postgres server, networking, Key Vault and backups are outside Terraform, and applies run from laptops with no plan review"
+  rewrite: "Infrastructure changes go straight from a laptop to production. The shared Postgres server, the network, the Key Vault and the backups aren't managed in Terraform, so their settings aren't in any repo, and nobody reviews a Terraform plan before it's applied (Azure Well-Architected)."
+- **A sentence that only lists things, with a count nobody needs** ("runs
+  through about 16 paths: A, B, C, D…"). Say what the list means for the
+  reader instead, and leave the inventory to the page that holds it.
+  flagged: "Reporting runs through about 16 paths: per-tenant BI dashboards, SQL models, older SQL views and procedures, billing dashboards and exports, compliance XML, and rendered reports"
+  rewrite: "Reporting has several code paths that compute the same measures, and they're kept in step by hand, so some have drifted apart."
+- **A vague verdict** ("in good shape", "in reasonable shape", "solid").
+  Say what is good about it.
+  flagged: "The model design, the finance exports and the query path are in good shape."
+  rewrite: "The models are safe to rerun, and the finance exports and the query path check the facility and have tests."
+- **Clauses that bend the sentence around an abstraction** ("pieces that
+  one failure would take down for every customer"). Say it in the order it
+  happens, with a plain subject.
+  flagged: "These are the shared pieces that limit growth, or that one failure would take down for every customer (Bottlenecks page)."
+  rewrite: "These are what growth runs into first. Several are also single points of failure, so one outage reaches every customer."
 - **Restating what the reader already knows.** In a message, an opening
   that spells out what the writer is obviously doing (what they're
   reviewing, which document they're following) when the context implies it.
@@ -336,6 +371,12 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "These are the declared sources, and what a pod has actually loaded can lag behind them"
   flagged: "so the diagram shows the declared path and this review could not check the running state"
   rewrite: "Which build each tenant runs is visible only in the cluster, not in git."
+  A summary's opening that tours the other pages ("The Architecture page
+  describes…, Findings holds…") is the same filler: the menu already says
+  where things are. A scope disclaimer at the top goes too: even a one-line
+  "I only looked at the code" was cut. The fix is to delete these, not to
+  reword them.
+  flagged: "The Architecture page describes the platform as it is. SOW coverage gives a verdict on every SOW item. Bottlenecks covers shared limits and growth. Findings holds the evidence, options and deeper-dive questions for each concern."
   A scope note written as a label and passive report ("Scope. This review covers…") reads as a form. When the caveat is needed, say it directly, and tell the reader what to do about it.
   flagged: "Scope. This review covers the code only: every repo as of 18 November 2026. It had no access to Azure or to anything running, so each point describes what the code declares. The running system may differ."
   rewrite: "Everything here comes from the code in the repos as they stood on November 18, not from Azure or the running system. Where production differs from the code, production is right, so flag any difference you know of."
@@ -480,6 +521,15 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 
 ## Claims and attribution
 
+- **Opinion verdicts in a findings report** ("a good base to build on",
+  "well built", "the cheapest fix", "the easiest copies", "more places than
+  it needs to be"). State what is there and what it does, clinically; the
+  reader draws the verdict.
+  flagged: "Each customer's data is kept apart in its own databases and storage account. That's a good base to build on."
+  rewrite: "Each customer's data is kept apart in its own databases and storage account, and one Terraform module builds every customer the same way."
+  flagged: "Some of it is well built."
+  flagged: "Customer data is copied to more places than it needs to be."
+  rewrite: "Customer data is copied into four other places."
 - **Overclaiming a tool** when the point is that a system checks outbound
   traffic. Describe the category (block, or allow with an audit record),
   then name products as examples among several, including build-your-own.
@@ -495,9 +545,10 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   see or check anything; a person did. Say who did it, usually "I", or state
   the fact about the code ("Running state isn't in the code").
   flagged: "This review read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
-  rewrite: "I worked from the code alone, going through every repo as it stood on November 18. I couldn't see Azure or anything running, so where production differs from what I describe, production is right."
   flagged: "The review couldn't see running state, such as resources made by hand"
   rewrite: "Running state isn't in the code, such as resources made by hand"
+  flagged: "Code reading shows nothing deploys BI dashboards or datasets, so they are built and rolled out by hand"
+  rewrite: "BI dashboards are built and rolled out by hand, one customer at a time. Nothing in the code deploys them"
   lint: document-actor
   rewrite: "The goal is to give the agent free rein inside the box without letting anything harmful leave it."
 - **False justifications.** Give the actual reason.
