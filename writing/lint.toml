@@ -42,6 +42,11 @@ pattern = "\\b(this|last|next) (week|month|year)\\b|\\b(recently|yesterday)\\b"
 message = "Relative date. Give the month and year."
 
 [[rule]]
+id = "formal-date"
+pattern = "\\b\\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December) 20\\d\\d\\b"
+message = "Day-first report date. Write it as you'd say it (November 18, mid-November 2026)."
+
+[[rule]]
 id = "for-me"
 pattern = "\\bfor me\\b"
 message = "\"X for me\" hedge. State the claim and its reason."

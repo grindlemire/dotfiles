@@ -103,6 +103,18 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
 - **Relative dates** ("this week", "recently"). Posts are read long after
   they're written, so give the month and year.
   lint: relative-date
+- **Dates and provenance written like a log header**: a day-first date
+  ("18 November 2026"), an ISO date in a sentence ("from 2025-12-01 to
+  2026-11-18"), or the file and commits a claim came from ("at the commits
+  pinned in the pins file"). Nobody talks that way. Write the date the way
+  you'd say it ("as it stood on November 18", "between December 2025 and
+  mid-November"), and leave commit lists to the file or table that holds
+  them.
+  flagged: "I read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
+  rewrite: "I worked from the code alone, going through every repo as it stood on November 18. I couldn't see Azure or anything running, so where production differs from what I describe, production is right."
+  flagged: "There were 120 prod tags from 2025-12-01 to 2026-11-18."
+  rewrite: "Production got 120 tags between December 2025 and mid-November 2026."
+  lint: formal-date
 - **"X for me"** as a hedge ("isn't a replacement for me"). State the
   claim and its reason, and let the first person elsewhere in the post
   carry whose view it is.
@@ -213,7 +225,7 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   flagged: "Cheapest first. None depends on a decision about the target architecture."
   Telegraphic report openers are the same pattern: a noun phrase with no subject, then a colon and more fragments. Give the sentence a subject and a verb, and say who did what.
   flagged: "Code-only review of the platform as of 2026-11-18: every repo pinned to a commit, no access to Azure or any running system."
-  rewrite: "I read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
+  rewrite: "I worked from the code alone, going through every repo as it stood on November 18. I couldn't see Azure or anything running, so where production differs from what I describe, production is right."
 - **Symmetrical, lyrical sentences** that repeat a noun for rhythm.
   flagged: "the tool is the only place to draw the line, so the line lands on the tool, and the harmless uses get banned along with the dangerous ones"
   rewrite: "The laptop gives a security team no other place to enforce a rule, so they ban the tool outright, harmless uses included."
@@ -326,7 +338,7 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   rewrite: "Which build each tenant runs is visible only in the cluster, not in git."
   A scope note written as a label and passive report ("Scope. This review covers…") reads as a form. When the caveat is needed, say it directly, and tell the reader what to do about it.
   flagged: "Scope. This review covers the code only: every repo as of 18 November 2026. It had no access to Azure or to anything running, so each point describes what the code declares. The running system may differ."
-  rewrite: "These findings come from reading every repo as of 18 November 2026, without access to Azure or the running system. Where production differs from the code, production is right, so flag any difference you know of."
+  rewrite: "Everything here comes from the code in the repos as they stood on November 18, not from Azure or the running system. Where production differs from the code, production is right, so flag any difference you know of."
   A caveat that earns its place in a brief is filler on a cover, landing page or page subtitle, where it has no job. Cut it there, along with subtitles that restate the page title.
   flagged: "A code-only review of every repo as of 18 November 2026. Where production differs from the code, production is right, so flag any difference you know of."
 - **"What I'll present"** framing when the message is a preview asking for
@@ -483,7 +495,7 @@ each `rewrite:` line into a case it must leave alone, so keep both exact.
   see or check anything; a person did. Say who did it, usually "I", or state
   the fact about the code ("Running state isn't in the code").
   flagged: "This review read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
-  rewrite: "I read every repo at the pinned commits on 18 November 2026, without access to Azure or any running system."
+  rewrite: "I worked from the code alone, going through every repo as it stood on November 18. I couldn't see Azure or anything running, so where production differs from what I describe, production is right."
   flagged: "The review couldn't see running state, such as resources made by hand"
   rewrite: "Running state isn't in the code, such as resources made by hand"
   lint: document-actor
